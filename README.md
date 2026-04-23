@@ -186,9 +186,13 @@ Per-tool scripts:
   folder, and/or specific guideline files—see the script’s header comment).
   Default is **off** (overwrites in place only). Use this when you have **removed**
   a source file and want the old generated copy to disappear instead of lingering
-  next to the new outputs. **Warning:** for Copilot rules, the whole
-  `.github/instructions/` directory is emptied; keep only sync-generated
-  `*.instructions.md` files there, or do not use `--clean` for that step.
+  next to the new outputs. **Warning:** each per-tool script empties its entire
+  output directory before writing — `.cursor/{agents,rules,skills}`,
+  `.claude/{agents,skills}`, `.github/{agents,instructions,skills}`, and
+  `.junie/{agents,skills}`. Any hand-authored files placed there will be lost.
+  This is especially easy to overlook under `.github/` (for Copilot), where
+  unrelated content is commonly kept. Keep only sync-generated files in these
+  directories, or do not use `--clean` for the affected step.
 - `--help` / `-h`
 
 `sync-all` adds:
