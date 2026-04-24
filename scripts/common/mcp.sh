@@ -36,7 +36,15 @@ mcp_list_server_files() {
 
   local -a selected=()
   if [[ -n "$ITEMS" ]]; then
+    local _item
     IFS=',' read -r -a selected <<< "$ITEMS"
+    local -a _trimmed=()
+    for _item in "${selected[@]+"${selected[@]}"}"; do
+      _item="${_item#"${_item%%[![:space:]]*}"}"
+      _item="${_item%"${_item##*[![:space:]]}"}"
+      _trimmed+=("$_item")
+    done
+    selected=("${_trimmed[@]+"${_trimmed[@]}"}")
   else
     selected=("${all[@]+"${all[@]}"}")
   fi
@@ -96,12 +104,13 @@ mcp_translate_body_vscode() {
 #   Deduplicates by id; if the same id appears both required and optional, the
 #   optional form wins (default "" so the prompt can be skipped).
 mcp_extract_inputs_vscode() {
-  # Collect strings, scan each for secret tokens, group by id.
+  # Collect strings, scan each for secret tokens, sort, then group by id.
   jq '
     [.. | strings]
     | map([scan("\\$\\{secret:([A-Za-z_][A-Za-z0-9_]*)(\\?optional)?\\}")])
     | map(.[])
     | map({id: .[0], optional: (.[1] == "?optional")})
+    | sort_by(.id)
     | group_by(.id)
     | map({id: .[0].id, optional: (any(.[]; .optional))})
     | map(
@@ -147,10 +156,12 @@ mcp_collect_inputs_vscode() {
     all="$(jq -n --argjson a "$all" --argjson b "$part" '$a + $b')"
   done < <(mcp_list_server_files "$input_dir")
   jq '
-    group_by(.id)
+    sort_by(.id)
+    | group_by(.id)
     | map(
-        .[0] as $first
-        | if any(.[]; .default == "") then (.[0] | . + {default: ""}) else $first end
+        if any(.[]; has("default")) then
+          (map(select(has("default"))) | .[0])
+        else .[0] end
       )
   ' <<< "$all"
 }

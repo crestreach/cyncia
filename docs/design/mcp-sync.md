@@ -24,7 +24,7 @@ Agent-level MCP binding (v1):
 | Tool | Supported on agents | Translation |
 |---|---|---|
 | Claude Code | Yes (`mcpServers:` in subagent frontmatter) | `mcp-servers: [a, b]` → `mcpServers: [a, b]` |
-| GitHub Copilot | Yes (`tools:` list with `<server>/*` globs) | `mcp-servers: [a, b]` → `tools: ["a/*", "b/*"]` (merged/appended) |
+| GitHub Copilot | Yes (`tools:` list with `<server>/*` globs) | `mcp-servers: "a, b"` → `tools: ["a/*", "b/*"]`; if `tools:` is already present, sync errors instead of merging/appending |
 | Cursor | Not documented | `mcp-servers:` stripped from emitted agent |
 | Junie | Not documented | `mcp-servers:` stripped |
 

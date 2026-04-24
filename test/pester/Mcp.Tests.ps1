@@ -124,6 +124,18 @@ Describe 'sync-mcp.ps1 — items and clean' {
     }
   }
 
+  It 'cursor -Items with spaces after comma: both servers included' {
+    $src = & $script:NewMcpSource
+    $out = & $script:NewOut
+    try {
+      & (& $script:McpScript 'cursor') -InputPath (Join-Path $src 'mcp-servers') -OutputPath $out -Items 'context7, httpbin'
+      $j = Get-Content -LiteralPath (Join-Path $out '.cursor\mcp.json') -Raw | ConvertFrom-Json
+      ($j.mcpServers.PSObject.Properties.Name | Sort-Object) -join ',' | Should -Be 'context7,httpbin'
+    } finally {
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
   It 'cursor: rerun replaces (not merges)' {
     $src = & $script:NewMcpSource
     $out = & $script:NewOut

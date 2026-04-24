@@ -40,3 +40,9 @@ teardown() {
   [ -f "$TEST_OUT/.mcp.json" ]
   [ "$(jq -r '.keep' "$TEST_OUT/.mcp.json")" = "true" ]
 }
+
+@test "cursor sync-mcp --items with spaces after comma: both servers included" {
+  run bash "${REPO_ROOT}/scripts/cursor/sync-mcp.sh" -i "$TEST_SRC/mcp-servers" -o "$TEST_OUT" --items "context7, httpbin"
+  [ "$status" -eq 0 ]
+  [ "$(jq -r '.mcpServers | keys | sort | join(",")' "$TEST_OUT/.cursor/mcp.json")" = "context7,httpbin" ]
+}

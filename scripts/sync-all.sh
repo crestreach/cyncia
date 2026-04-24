@@ -6,6 +6,8 @@
 #   sync-all.sh -i <source_root> -o <output_root> [--tools cursor,claude,copilot,vscode,junie] [--items a,b,c] [--clean]
 #
 #   <source_root>  Directory containing: agents/, rules/, skills/, AGENTS.md
+#                  Optionally: mcp-servers/ (one *.json file per MCP server).
+#                  When mcp-servers/ is present, sync-mcp.sh is run for each tool.
 #   <output_root>  Project root where tool-specific files are written (.cursor, …)
 #                  Each sync-agent-guidelines copies AGENTS.md here when i≠o.
 #   --clean        Forwarded to every per-tool script: clear that script’s

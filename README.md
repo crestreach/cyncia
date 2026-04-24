@@ -20,7 +20,7 @@ mapped** into each tool’s native file set).
 This repo is based on **vendor-documented behavior** for Cursor, Claude Code, GitHub Copilot, VS Code, and JetBrains Junie.
 
 - **Doc snapshot date:** **2026-04-24** (when the formats + behaviors in this README were last checked).
-- **If something stops working after an update:** re-check the relevant venśdor docs and adjust the scripts/docs here.
+- **If something stops working after an update:** re-check the relevant vendor docs and adjust the scripts/docs here.
 - **More detail:** pinned versions live in [`tool-versions.md`](tool-versions.md); a per-tool field reference lives in [`tools.md`](tools.md).
 
 ## Repository layout

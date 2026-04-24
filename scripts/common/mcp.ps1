@@ -81,7 +81,10 @@ function global:Convert-McpBodyCursor {
   param([Parameter(Mandatory=$true)][string]$Path)
   $obj = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
   return (_McpRewriteStrings -Node $obj -Rewrite {
-    param($s) $global:_McpSecretRegex.Replace($s, '${env:${n}}')
+    param($s)
+    $global:_McpSecretRegex.Replace($s, {
+      param($m) '${env:' + $m.Groups['n'].Value + '}'
+    })
   })
 }
 
@@ -103,7 +106,10 @@ function global:Convert-McpBodyVscode {
   param([Parameter(Mandatory=$true)][string]$Path)
   $obj = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
   return (_McpRewriteStrings -Node $obj -Rewrite {
-    param($s) $global:_McpSecretRegex.Replace($s, '${input:${n}}')
+    param($s)
+    $global:_McpSecretRegex.Replace($s, {
+      param($m) '${input:' + $m.Groups['n'].Value + '}'
+    })
   })
 }
 

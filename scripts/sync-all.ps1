@@ -5,7 +5,9 @@
   Expects a single source tree (agents/, rules/, skills/, AGENTS.md) and one
   output project root.
 .PARAMETER InputRoot
-  Directory containing: agents/, rules/, skills/, and AGENTS.md
+  Directory containing: agents/, rules/, skills/, and AGENTS.md.
+  Optionally: mcp-servers/ (one *.json file per MCP server). When mcp-servers/
+  is present, sync-mcp.ps1 is run for each tool.
 .PARAMETER OutputRoot
   Project root where tool-specific files are written. Each
   sync-agent-guidelines run copies AGENTS.md when input≠output.
