@@ -1,0 +1,7 @@
+{
+  "type": "http",
+  "url": "https://httpbin.example/api",
+  "headers": {
+    "Authorization": "Bearer ${secret:HTTPBIN_TOKEN}"
+  }
+}
