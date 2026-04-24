@@ -427,11 +427,11 @@ usual choice is **Git submodule** (pin a commit, easy updates) or **Git subtree*
 ### Git submodule
 
 The parent repo records **which commit** of `ai-dev-agent-config-sync` it uses. Replace the
-URL with your fork if needed (for example `https://github.com/arturolszak/ai-dev-agent-config-sync.git`).
+URL with your fork if needed (for example `https://github.com/crestreach/ai-dev-agent-config-sync.git`).
 
 ```bash
 # From the root of your other project
-git submodule add https://github.com/arturolszak/ai-dev-agent-config-sync.git path/to/ai-dev-agent-config-sync
+git submodule add https://github.com/crestreach/ai-dev-agent-config-sync.git path/to/ai-dev-agent-config-sync
 git commit -m "Add ai-dev-agent-config-sync as a submodule"
 ```
 
@@ -470,13 +470,13 @@ Upstream is merged into a **prefix directory** inside your single repository;
 `git clone` of your app does not need `--recurse-submodules`.
 
 ```bash
-git subtree add --prefix=path/to/ai-dev-agent-config-sync https://github.com/arturolszak/ai-dev-agent-config-sync.git main --squash
+git subtree add --prefix=path/to/ai-dev-agent-config-sync https://github.com/crestreach/ai-dev-agent-config-sync.git main --squash
 ```
 
 **Update later** (may require merge conflict resolution):
 
 ```bash
-git subtree pull --prefix=path/to/ai-dev-agent-config-sync https://github.com/arturolszak/ai-dev-agent-config-sync.git main --squash
+git subtree pull --prefix=path/to/ai-dev-agent-config-sync https://github.com/crestreach/ai-dev-agent-config-sync.git main --squash
 ```
 
 **Trade-off:** One clone for everyone; updates are merges and can conflict.
