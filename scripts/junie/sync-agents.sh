@@ -26,7 +26,8 @@ junie_agent() {
   local name="$1" src="$2"
   local dst="$OUTPUT_DIR/.junie/agents/$name.md"
   mkdir -p "$(dirname "$dst")"
-  cp "$src" "$dst"
+  # Strip generic 'mcp-servers' (Junie has no documented per-agent MCP binding).
+  rewrite_skill_frontmatter "$src" "drop=mcp-servers" > "$dst"
   echo "junie agent -> $dst"
 }
 

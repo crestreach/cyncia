@@ -199,3 +199,60 @@ function global:Sync-Items {
     & $Handler $name $src
   }
 }
+
+function global:Copy-WithFrontmatterEdit {
+  <#
+    Copy a Markdown file with YAML frontmatter from $Source to $Destination,
+    optionally dropping keys, renaming keys, or inserting a literal line
+    before the closing '---'.
+  #>
+  param(
+    [Parameter(Mandatory=$true)][string]$Source,
+    [Parameter(Mandatory=$true)][string]$Destination,
+    [string[]]$Drop = @(),
+    [hashtable]$Rename = @{},
+    [string[]]$Insert = @()
+  )
+  New-Item -ItemType Directory -Force -Path (Split-Path $Destination) | Out-Null
+  Copy-Item -LiteralPath $Source -Destination $Destination -Force
+  if (($Drop.Count -gt 0) -or ($Rename.Count -gt 0)) {
+    Edit-SkillFrontmatter -Path $Destination -Drop $Drop -Rename $Rename
+  }
+  if ($Insert.Count -gt 0) {
+    $lines = Get-Content -LiteralPath $Destination
+    if ($lines.Count -ge 1 -and $lines[0].Trim() -eq '---') {
+      $end = -1
+      for ($i = 1; $i -lt $lines.Count; $i++) {
+        if ($lines[$i].Trim() -eq '---') { $end = $i; break }
+      }
+      if ($end -gt 0) {
+        $out = New-Object System.Collections.Generic.List[string]
+        for ($i = 0; $i -lt $end; $i++) { $out.Add($lines[$i]) }
+        foreach ($l in $Insert) { $out.Add($l) }
+        for ($i = $end; $i -lt $lines.Count; $i++) { $out.Add($lines[$i]) }
+        Set-Content -LiteralPath $Destination -Value $out -Encoding UTF8
+      }
+    }
+  }
+}
+
+function global:ConvertTo-YamlFlowList {
+  <#
+    "a, b, c" -> "[a, b, c]". Used for Claude mcpServers.
+  #>
+  param([string]$Csv)
+  if ([string]::IsNullOrWhiteSpace($Csv)) { return '[]' }
+  $items = $Csv -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+  return '[' + ($items -join ', ') + ']'
+}
+
+function global:ConvertTo-CopilotToolsList {
+  <#
+    "a, b" -> '["a/*", "b/*"]'. Used for Copilot agent tools: field.
+  #>
+  param([string]$Csv)
+  if ([string]::IsNullOrWhiteSpace($Csv)) { return '[]' }
+  $items = $Csv -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ } |
+           ForEach-Object { '"' + $_ + '/*"' }
+  return '[' + ($items -join ', ') + ']'
+}

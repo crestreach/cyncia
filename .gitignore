@@ -2,5 +2,8 @@
 .cursor/
 .github/
 .junie/
+.mcp.json
+.vscode/
+examples/.vscode/
 CLAUDE.md
 _notes.md

@@ -204,6 +204,59 @@ apply_skill_rewrite() {
   mv "$tmp" "$f"
 }
 
+# insert_fm_line <file> <line>
+#   Insert <line> immediately before the closing '---' of the YAML frontmatter.
+#   No-op if the file has no frontmatter.
+insert_fm_line() {
+  local f="$1" line="$2"
+  local tmp="$f.tmp"
+  awk -v line="$line" '
+    BEGIN { in_fm=0; inserted=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; print; next }
+    in_fm && /^---[[:space:]]*$/ {
+      if (!inserted) { print line; inserted=1 }
+      in_fm=0; print; next
+    }
+    { print }
+  ' "$f" > "$tmp" && mv "$tmp" "$f"
+}
+
+# mcp_csv_to_yaml_flow_list <csv>
+#   "a, b, c" -> "[a, b, c]". Used for Claude `mcpServers:`.
+mcp_csv_to_yaml_flow_list() {
+  local csv="$1"
+  local -a items=()
+  local item IFS=','
+  for item in $csv; do
+    item="${item#"${item%%[![:space:]]*}"}"
+    item="${item%"${item##*[![:space:]]}"}"
+    [[ -n "$item" ]] && items+=("$item")
+  done
+  local joined="" i
+  for i in "${items[@]+"${items[@]}"}"; do
+    joined+="$i, "
+  done
+  echo "[${joined%, }]"
+}
+
+# mcp_csv_to_copilot_tools_list <csv>
+#   "a, b" -> '["a/*", "b/*"]'. Used for Copilot agent `tools:`.
+mcp_csv_to_copilot_tools_list() {
+  local csv="$1"
+  local -a items=()
+  local item IFS=','
+  for item in $csv; do
+    item="${item#"${item%%[![:space:]]*}"}"
+    item="${item%"${item##*[![:space:]]}"}"
+    [[ -n "$item" ]] && items+=("\"$item/*\"")
+  done
+  local joined="" i
+  for i in "${items[@]+"${items[@]}"}"; do
+    joined+="$i, "
+  done
+  echo "[${joined%, }]"
+}
+
 # sync_items <src_dir> <file|dir> <handler_fn>
 #   Iterates items (top-level files or subdirectories) under src_dir.
 #   file mode: picks *.md and uses the basename without .md (README.md is ignored).

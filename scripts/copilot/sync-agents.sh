@@ -26,7 +26,18 @@ copilot_agent() {
   local name="$1" src="$2"
   local dst="$OUTPUT_DIR/.github/agents/$name.md"
   mkdir -p "$(dirname "$dst")"
-  cp "$src" "$dst"
+  # Drop generic 'mcp-servers' from frontmatter; translate to 'tools: ["name/*"]'.
+  local existing_tools mcp
+  existing_tools="$(extract_field "$src" tools)"
+  mcp="$(extract_field "$src" mcp-servers)"
+  if [[ -n "$mcp" && -n "$existing_tools" ]]; then
+    echo "error: agent '$name' has both 'mcp-servers' and 'tools' frontmatter; merge manually." >&2
+    exit 1
+  fi
+  rewrite_skill_frontmatter "$src" "drop=mcp-servers" > "$dst"
+  if [[ -n "$mcp" ]]; then
+    insert_fm_line "$dst" "tools: $(mcp_csv_to_copilot_tools_list "$mcp")"
+  fi
   echo "copilot agent -> $dst"
 }
 

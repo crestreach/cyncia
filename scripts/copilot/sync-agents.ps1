@@ -34,8 +34,16 @@ if ($Clean) {
 $handler = {
   param($name, $src)
   $dst = Join-Path $OutputDir ".github/agents/$name.md"
-  New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
-  Copy-Item $src $dst -Force
+  $existingTools = Get-FrontmatterField -Path $src -Key 'tools'
+  $mcp = Get-FrontmatterField -Path $src -Key 'mcp-servers'
+  if ($mcp -and $existingTools) {
+    throw "error: agent '$name' has both 'mcp-servers' and 'tools' frontmatter; merge manually."
+  }
+  $insert = @()
+  if ($mcp) {
+    $insert += "tools: $(ConvertTo-CopilotToolsList -Csv $mcp)"
+  }
+  Copy-WithFrontmatterEdit -Source $src -Destination $dst -Drop @('mcp-servers') -Insert $insert
   Write-Host "copilot agent -> $dst"
 }.GetNewClosure()
 

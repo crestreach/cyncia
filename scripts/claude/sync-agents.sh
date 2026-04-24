@@ -26,7 +26,13 @@ claude_agent() {
   local name="$1" src="$2"
   local dst="$OUTPUT_DIR/.claude/agents/$name.md"
   mkdir -p "$(dirname "$dst")"
-  cp "$src" "$dst"
+  # Drop generic 'mcp-servers' from frontmatter; inject native 'mcpServers'.
+  rewrite_skill_frontmatter "$src" "drop=mcp-servers" > "$dst"
+  local mcp
+  mcp="$(extract_field "$src" mcp-servers)"
+  if [[ -n "$mcp" ]]; then
+    insert_fm_line "$dst" "mcpServers: $(mcp_csv_to_yaml_flow_list "$mcp")"
+  fi
   echo "claude agent -> $dst"
 }
 

@@ -34,8 +34,12 @@ if ($Clean) {
 $handler = {
   param($name, $src)
   $dst = Join-Path $OutputDir ".claude/agents/$name.md"
-  New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
-  Copy-Item $src $dst -Force
+  $mcp = Get-FrontmatterField -Path $src -Key 'mcp-servers'
+  $insert = @()
+  if ($mcp) {
+    $insert += "mcpServers: $(ConvertTo-YamlFlowList -Csv $mcp)"
+  }
+  Copy-WithFrontmatterEdit -Source $src -Destination $dst -Drop @('mcp-servers') -Insert $insert
   Write-Host "claude agent -> $dst"
 }.GetNewClosure()
 

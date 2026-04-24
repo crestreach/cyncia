@@ -1,6 +1,6 @@
 ---
 name: agent-conf-sync
-description: Runs the ai-dev-agent-config-sync batch script (`sync-all`) to regenerate Cursor, Claude Code, GitHub Copilot, and JetBrains Junie configuration from a generic source tree. Use when the user asks to "sync agent config", "regenerate rules/skills/agents", "update .cursor / .claude / .github / .junie from source", "run sync-all", or similar — so they don't have to assemble CLI flags or pick Windows vs Unix scripts themselves. The skill detects the OS, finds the script, and infers `-i` / `-o` / `--tools` / `--items` / `--clean` from the natural-language request.
+description: Runs the ai-dev-agent-config-sync batch script (`sync-all`) to regenerate Cursor, Claude Code, GitHub Copilot, VS Code, and JetBrains Junie configuration from a generic source tree. Use when the user asks to "sync agent config", "regenerate rules/skills/agents/mcp", "update .cursor / .claude / .github / .junie / .vscode from source", "run sync-all", or similar — so they don't have to assemble CLI flags or pick Windows vs Unix scripts themselves. The skill detects the OS, finds the script, and infers `-i` / `-o` / `--tools` / `--items` / `--clean` from the natural-language request.
 ---
 
 # agent-conf-sync
@@ -14,8 +14,9 @@ Full format reference is in the repo's `README.md`. This skill is only about **i
 Apply when the user wants to (re)generate tool-specific AI-assistant config from a single generic source tree. Trigger phrases include:
 
 - "sync all", "run sync-all", "sync agent config", "sync the config"
-- "regenerate / update the rules / skills / agents / guidelines"
+- "regenerate / update the rules / skills / agents / guidelines / mcp"
 - "rebuild `.cursor` / `.claude` / `.github` / `.junie`"
+- "sync MCP servers", "regenerate `.vscode/mcp.json`", "update Claude `.mcp.json`"
 - "sync for Cursor and Claude", "only Copilot", "skip Junie"
 - "clean sync", "prune stale files", "mirror deletions"
 
@@ -48,7 +49,7 @@ Use **absolute paths** when invoking the script.
 
 ### Input root — `-i` / `-InputRoot` (required)
 
-The directory that contains `AGENTS.md`, `agents/`, `skills/`, `rules/` (the generic authoring tree).
+The directory that contains `AGENTS.md`, `agents/`, `skills/`, `rules/` (the generic authoring tree). May optionally contain `mcp-servers/` — when present, `sync-all` also generates the per-tool MCP config (Cursor `.cursor/mcp.json`, Claude `.mcp.json`, VS Code `.vscode/mcp.json`; Junie prints the snippet to stdout). `.vscode/mcp.json` is written by the `vscode` tool, not by `copilot` (it is a VS Code file, not a Copilot file).
 
 Mapping from user phrasing:
 
@@ -65,16 +66,18 @@ The project root where `.cursor/`, `.claude/`, `.github/`, `.junie/`, and the ro
 
 ### `--tools` / `-Tools` (optional; default: all four)
 
-Comma-separated subset of `cursor,claude,copilot,junie` (case-insensitive, no spaces).
+Comma-separated subset of `cursor,claude,copilot,vscode,junie` (case-insensitive, no spaces).
 
 | Phrase | Value |
 |--------|-------|
-| "all tools", "everything", no tool mentioned | omit flag (default = all four) |
+| "all tools", "everything", no tool mentioned | omit flag (default = all five) |
 | "only Cursor" | `cursor` |
 | "Cursor and Claude", "not Copilot, not Junie" | `cursor,claude` |
-| "skip Junie" | `cursor,claude,copilot` |
+| "skip Junie" | `cursor,claude,copilot,vscode` |
+| "only VS Code", "just MCP for VS Code" | `vscode` |
+| "Copilot with its MCP" | `copilot,vscode` (Copilot Chat in VS Code reads `.vscode/mcp.json`) |
 
-Synonyms: **cursor** ← "Cursor"; **claude** ← "Claude", "Claude Code"; **copilot** ← "Copilot", "GitHub Copilot"; **junie** ← "Junie", "JetBrains".
+Synonyms: **cursor** ← "Cursor"; **claude** ← "Claude", "Claude Code"; **copilot** ← "Copilot", "GitHub Copilot"; **vscode** ← "VS Code", "VSCode", "Visual Studio Code"; **junie** ← "Junie", "JetBrains".
 
 ### `--items` / `-Items` (optional)
 
@@ -144,6 +147,7 @@ Reply with a **compact** summary, not the full log:
 
 ## Edge cases
 
+- **MCP-only sync:** likewise, call `scripts/<tool>/sync-mcp.{sh,ps1} -i <src>/mcp-servers -o <out>` directly. The Bash variants require `jq`.
 - **Rules-only sync:** `sync-all` has no such flag. Call the per-tool script directly (e.g. `scripts/cursor/sync-rules.sh -i <src>/rules -o <out>`).
 - **Submodule / monorepo:** always resolve real filesystem paths before running.
 - **Input equals output:** allowed; scripts skip the redundant `AGENTS.md` copy.

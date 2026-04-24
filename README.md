@@ -3,7 +3,7 @@
 Tool-agnostic source of truth for AI coding-assistant configuration —
 **agents**, **skills**, **rules/guidelines**, and a top-level **`AGENTS.md`** —
 plus sync scripts that generate tool-specific files for **Cursor**,
-**Claude Code**, **GitHub Copilot**, and **JetBrains Junie**.
+**Claude Code**, **GitHub Copilot**, **VS Code** (MCP), and **JetBrains Junie**.
 
 Use it when you want to **author one set of agents/skills/rules once** (in a generic format),
 then **sync** them into each tool’s native file layout automatically.
@@ -17,9 +17,9 @@ mapped** into each tool’s native file set).
 
 ## Supported tools and versions
 
-This repo is based on **vendor-documented behavior** for Cursor, Claude Code, GitHub Copilot, and JetBrains Junie.
+This repo is based on **vendor-documented behavior** for Cursor, Claude Code, GitHub Copilot, VS Code, and JetBrains Junie.
 
-- **Doc snapshot date:** **2026-04-23** (when the formats + behaviors in this README were last checked).
+- **Doc snapshot date:** **2026-04-24** (when the formats + behaviors in this README were last checked).
 - **If something stops working after an update:** re-check the relevant vendor docs and adjust the scripts/docs here.
 - **More detail:** pinned versions live in [`tool-versions.md`](tool-versions.md); a per-tool field reference lives in [`tools.md`](tools.md).
 
@@ -36,6 +36,7 @@ directly). That root must contain:
 | `agents/<name>.md` | One agent / subagent definition per file. |
 | `skills/<name>/SKILL.md` | One skill per folder (Agent Skills format). |
 | `rules/<name>.md` | One rule per file (generic frontmatter defined by this repo). |
+| `mcp-servers/<name>.json` | Optional. One MCP server config per file (see [Internal format: MCP servers](#internal-format-mcp-servers)). |
 
 In *this repository*, `_internal/` is just the authoring tree used to build the repo’s own generated outputs. You do **not** need (and usually should not use) `_internal/` in your own project — create your own source tree anywhere and point `-i`/`-InputRoot` script parameters at it.
 
@@ -43,12 +44,13 @@ In *this repository*, `_internal/` is just the authoring tree used to build the 
 
 The sync scripts write tool-specific files under your **output root**:
 
-| Generated from | Cursor | Claude Code | GitHub Copilot | JetBrains Junie |
-|---|---|---|---|---|
-| `agents/<name>.md` | `.cursor/agents/<name>.md` | `.claude/agents/<name>.md` | `.github/agents/<name>.md` | `.junie/agents/<name>.md` |
-| `skills/<name>/…` | `.cursor/skills/<name>/…` | `.claude/skills/<name>/…` | `.github/skills/<name>/…` | `.junie/skills/<name>/…` |
-| `rules/<name>.md` | `.cursor/rules/<name>.mdc` | *(not generated)* | `.github/instructions/<name>.instructions.md` | *(not generated)* |
-| `AGENTS.md` | `AGENTS.md` (copied to output root when source root ≠ output root) | `CLAUDE.md` (generated from `AGENTS.md` + `rules/*.md`) | `.github/copilot-instructions.md` (copied from `AGENTS.md`) | `.junie/AGENTS.md` (generated from `AGENTS.md` + `rules/*.md`) |
+| Generated from | Cursor | Claude Code | GitHub Copilot | VS Code | JetBrains Junie |
+|---|---|---|---|---|---|
+| `agents/<name>.md` | `.cursor/agents/<name>.md` | `.claude/agents/<name>.md` | `.github/agents/<name>.md` | *(no file)* | `.junie/agents/<name>.md` |
+| `skills/<name>/…` | `.cursor/skills/<name>/…` | `.claude/skills/<name>/…` | `.github/skills/<name>/…` | *(no file)* | `.junie/skills/<name>/…` |
+| `rules/<name>.md` | `.cursor/rules/<name>.mdc` | *(not generated)* | `.github/instructions/<name>.instructions.md` | *(no file)* | *(not generated)* |
+| `mcp-servers/<name>.json` | `.cursor/mcp.json` | `.mcp.json` (project root) | *(no file — `.vscode/mcp.json` is written by the **vscode** tool)* | `.vscode/mcp.json` (+ `inputs[]`) | *(stdout snippet only — no file)* |
+| `AGENTS.md` | `AGENTS.md` (copied to output root when source root ≠ output root) | `CLAUDE.md` (generated from `AGENTS.md` + `rules/*.md`) | `.github/copilot-instructions.md` (copied from `AGENTS.md`) | *(no file)* | `.junie/AGENTS.md` (generated from `AGENTS.md` + `rules/*.md`) |
 
 Notes:
 
@@ -119,6 +121,106 @@ Other frontmatter keys (`argument-hint`, `disable-model-invocation`, Copilot
 `user-invokable`, Claude `allowed-tools`, etc.) are passed through **unchanged**
 to every tool’s copy; tools ignore keys they do not support.
 
+## Internal format: MCP servers
+
+Optional. If `<source_root>/mcp-servers/` exists, `sync-all` will generate the
+appropriate MCP config file for every tool that supports a project-level config
+(Cursor, Claude Code, VS Code). `.vscode/mcp.json` belongs to **VS Code** —
+GitHub Copilot Chat in VS Code reads the same file but does not define the
+format, so it is written by the `vscode` tool, not by `copilot`. For Junie —
+which has no project-level MCP file as of the documented version — the snippet
+is printed to stdout for manual paste.
+
+### Source format
+
+One JSON file per server: `<source_root>/mcp-servers/<name>.json`. The file
+basename becomes the server name. The body is the per-server config object
+(no `mcpServers` wrapper).
+
+Example — `mcp-servers/context7.json`:
+
+```json
+{
+  "type": "stdio",
+  "command": "npx",
+  "args": ["-y", "@upstash/context7-mcp"],
+  "env": {
+    "CONTEXT7_API_KEY": "${secret:CONTEXT7_API_KEY?optional}"
+  }
+}
+```
+
+Example — `mcp-servers/httpbin.json`:
+
+```json
+{
+  "type": "http",
+  "url": "https://httpbin.example/api",
+  "headers": {
+    "Authorization": "Bearer ${secret:HTTPBIN_TOKEN}"
+  }
+}
+```
+
+### Secret tokens
+
+Two interpolation tokens are recognised inside string values **anywhere** in the
+JSON (env values, args, headers, urls, …):
+
+| Token | Meaning |
+|-------|---------|
+| `${secret:NAME}` | **Required** secret. Each tool emits its native form (see translation table). |
+| `${secret:NAME?optional}` | **Optional** secret. The translated form is safe-empty (e.g. Bash default `${NAME:-}`, VS Code input with `default: ""`). |
+
+`NAME` must match `[A-Za-z_][A-Za-z0-9_]*`.
+
+### Translation per tool
+
+| Tool | Output | Container | Required `${secret:NAME}` | Optional `${secret:NAME?optional}` |
+|---|---|---|---|---|
+| Cursor | `.cursor/mcp.json` | `mcpServers` | `${env:NAME}` | `${env:NAME}` |
+| Claude Code | `.mcp.json` (project root) | `mcpServers` | `${NAME}` | `${NAME:-}` |
+| VS Code (incl. Copilot Chat in VS Code) | `.vscode/mcp.json` | `servers` + `inputs[]` | `${input:NAME}` (+ `inputs[]` entry, `password: true`) | `${input:NAME}` (+ `inputs[]` entry, `password: true`, `default: ""`) |
+| Junie | *(stdout only)* | `mcpServers` | passed through verbatim | passed through verbatim |
+
+`sync-mcp` always **replaces** the target file (it does not merge with
+hand-edited entries). Re-running with `--items <subset>` produces a smaller
+file, not a partial one. With `--clean`, an empty filtered set **removes** the
+target file.
+
+### Agent ↔ MCP server linkage
+
+Agent frontmatter may declare which MCP servers it expects, using the generic
+key `mcp-servers` (a comma-separated string of server names). Each tool
+translates this key when copying the agent file:
+
+```markdown
+---
+name: aside
+description: Side question agent.
+mcp-servers: "context7, memory"
+---
+```
+
+| Tool | Resulting frontmatter |
+|---|---|
+| Cursor | `mcp-servers` is **stripped** (no documented per-agent MCP gating) |
+| Claude Code | `mcpServers: [context7, memory]` |
+| GitHub Copilot | `tools: ["context7/*", "memory/*"]` |
+| Junie | `mcp-servers` is **stripped** |
+
+If a Copilot agent file already has its own `tools:` key **and** `mcp-servers:`,
+`sync-agents` exits with an error so you can merge them by hand.
+
+### Dependencies and limits
+
+- Bash MCP scripts require `jq` (1.6+). The other sync steps do not.
+- Junie has no project-level MCP file in the documented version; `sync-mcp`
+  prints the merged JSON to stdout so you can paste it under
+  *Settings | Tools | AI Assistant | Model Context Protocol (MCP)*.
+- The MCP step is **skipped entirely** when `<source_root>/mcp-servers/` does
+  not exist; you do not need to create the directory if you have no MCP servers.
+
 ## Generic fields and translation (summary)
 
 ### Rules (`rules/*.md`)
@@ -139,6 +241,24 @@ to every tool’s copy; tools ignore keys they do not support.
 
 Pass-through file copy. Tool-only frontmatter keys may be ignored by other tools
 (they do not enforce behavior cross-tool).
+
+| Generic field | Cursor | Claude Code | Copilot | Junie |
+|---------------|--------|------------|---------|-------|
+| `mcp-servers: "a, b"` | stripped | `mcpServers: [a, b]` | `tools: ["a/*", "b/*"]` | stripped |
+
+### MCP servers (`mcp-servers/*.json`)
+
+`.vscode/mcp.json` is a **VS Code** configuration file, written by the separate
+`vscode` tool in this repo. Copilot Chat in VS Code reads the same file but
+does not own the format. The `copilot` tool only writes Copilot-specific
+agents/skills/rules/instructions under `.github/`, and its agent frontmatter
+`mcp-servers:` key translates to Copilot's `tools:` allowlist (see above).
+
+| Generic token (in any string value) | Cursor | Claude Code | VS Code | Junie |
+|-------------------------------------|--------|------------|---------|-------|
+| `${secret:NAME}` | `${env:NAME}` | `${NAME}` | `${input:NAME}` (+ `inputs[]` entry) | passed through verbatim |
+| `${secret:NAME?optional}` | `${env:NAME}` | `${NAME:-}` | `${input:NAME}` (+ `inputs[]` entry, `default: ""`) | passed through verbatim |
+| (output container) | `mcpServers` | `mcpServers` | `servers` + `inputs[]` | `mcpServers` (stdout only) |
 
 ## What loads when you open the project
 
@@ -162,16 +282,19 @@ Layout: one directory per tool, plus shared helpers.
 scripts/
 ├── common/                  # shared Bash + PowerShell utilities
 │   ├── common.sh
-│   └── common.ps1
+│   ├── common.ps1
+│   ├── mcp.sh
+│   └── mcp.ps1
 ├── cursor/
 │   ├── sync-agents.{sh,ps1}
 │   ├── sync-skills.{sh,ps1}
 │   ├── sync-agent-guidelines.{sh,ps1}
-│   └── sync-rules.{sh,ps1}
-├── claude/        ...       # same four pairs
+│   ├── sync-rules.{sh,ps1}
+│   └── sync-mcp.{sh,ps1}
+├── claude/        ...       # same five pairs
 ├── copilot/       ...
 ├── junie/         ...
-├── sync-all.sh              # convenience: run every tool's four scripts
+├── sync-all.sh              # convenience: run every tool's scripts
 └── sync-all.ps1
 ```
 
@@ -291,7 +414,8 @@ Assuming your source root is `SOURCE_ROOT/`:
 1. **New agent:** add `SOURCE_ROOT/agents/<name>.md`, then run `sync-agents` or `sync-all`.
 2. **New skill:** add `SOURCE_ROOT/skills/<name>/SKILL.md` (and optional extra files), then run `sync-skills` or `sync-all`.
 3. **New rule:** add `SOURCE_ROOT/rules/<name>.md`, then run `sync-rules` (Cursor/Copilot) or `sync-all` (Claude will pick it up via `sync-agent-guidelines`).
-4. **Update guidelines:** edit `SOURCE_ROOT/AGENTS.md`, then run `sync-agent-guidelines` or `sync-all`.
+4. **New MCP server:** add `SOURCE_ROOT/mcp-servers/<name>.json`, then run `sync-mcp` or `sync-all`. Requires `jq` for the Bash scripts.
+5. **Update guidelines:** edit `SOURCE_ROOT/AGENTS.md`, then run `sync-agent-guidelines` or `sync-all`.
 
 ## Using this repo inside another Git project
 

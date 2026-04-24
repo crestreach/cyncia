@@ -34,8 +34,7 @@ if ($Clean) {
 $handler = {
   param($name, $src)
   $dst = Join-Path $OutputDir ".junie/agents/$name.md"
-  New-Item -ItemType Directory -Force -Path (Split-Path $dst) | Out-Null
-  Copy-Item $src $dst -Force
+  Copy-WithFrontmatterEdit -Source $src -Destination $dst -Drop @('mcp-servers')
   Write-Host "junie agent -> $dst"
 }.GetNewClosure()
 
