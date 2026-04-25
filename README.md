@@ -28,15 +28,16 @@ This repo is based on **vendor-documented behavior** for Cursor, Claude Code, Gi
 ### Your generic source tree (you author these)
 
 You provide a **source root** directory to `sync-all` (or call per-tool scripts
-directly). That root must contain:
+directly). Only `AGENTS.md` is required; every subfolder is **optional** and
+the corresponding sync step is skipped with a console note when its folder is absent.
 
-| Path (relative to your source root) | Meaning |
-|---|---|
-| `AGENTS.md` | Project-wide guidelines (the “generic” source). |
-| `agents/<name>.md` | One agent / subagent definition per file. |
-| `skills/<name>/SKILL.md` | One skill per folder (Agent Skills format). |
-| `rules/<name>.md` | One rule per file (generic frontmatter defined by this repo). |
-| `mcp-servers/<name>.json` | Optional. One MCP server config per file (see [Internal format: MCP servers](#internal-format-mcp-servers)). |
+| Path (relative to your source root) | Required | Meaning |
+|---|---|---|
+| `AGENTS.md` | **yes** | Project-wide guidelines (the “generic” source). |
+| `agents/<name>.md` | optional | One agent / subagent definition per file. |
+| `skills/<name>/SKILL.md` | optional | One skill per folder (Agent Skills format). |
+| `rules/<name>.md` | optional | One rule per file (generic frontmatter defined by this repo). |
+| `mcp-servers/<name>.json` | optional | One MCP server config per file (see [Internal format: MCP servers](#internal-format-mcp-servers)). |
 
 In *this repository*, `_internal/` is just the authoring tree used to build the repo’s own generated outputs. You do **not** need (and usually should not use) `_internal/` in your own project — create your own source tree anywhere and point `-i`/`-InputRoot` script parameters at it.
 
@@ -330,7 +331,7 @@ no deletions.
 
 ### Examples — macOS / Linux
 
-`sync-all` needs a **source root** that contains `agents/`, `rules/`, `skills/`, and `AGENTS.md`, and an **output root** (usually your project root).
+`sync-all` needs a **source root** containing `AGENTS.md` (and optionally any of `agents/`, `rules/`, `skills/`, `mcp-servers/`), and an **output root** (usually your project root).
 
 ```bash
 # Regenerate everything for every tool (source tree → output root)
@@ -420,9 +421,75 @@ Assuming your source root is `SOURCE_ROOT/`:
 ## Using this repo inside another Git project
 
 If your application already lives in its own Git repository, you can **pull in
-this one** as a dependency and run the sync scripts from a subdirectory. The
-usual choice is **Git submodule** (pin a commit, easy updates) or **Git subtree**
-(no submodules; everything in one clone). Details: [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules), [Git subtree (Atlassian)](https://www.atlassian.com/git/tutorials/git-subtree).
+this one** as a dependency and run the sync scripts from a subdirectory.
+
+There are three approaches in increasing order of Git ceremony:
+
+1. **Minimal install** — download only `scripts/` and `skills/` from a tarball
+   (simplest, no upstream tracking).
+2. **Git submodule** — pin a commit, easy updates with a few Git commands.
+3. **Git subtree** — no submodules; everything in one clone.
+
+Reference docs: [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules),
+[Git subtree (Atlassian)](https://www.atlassian.com/git/tutorials/git-subtree).
+
+### Minimal install (only `scripts/` and `skills/`)
+
+The simplest setup pulls **only the two directories you need** from a tagged
+release or `main` into a directory of your choice (the examples use
+`ai-dev-agent-config-sync/` at your project root — pick any name; it's just a
+plain subdirectory in your repo, not auto-tracked or auto-linked to upstream).
+Two equivalent variants:
+
+#### Variant A — `git sparse-checkout` (two commands)
+
+Shortest to type. Leaves a small `.git/` inside the target directory so you
+can `git pull` to update.
+
+```bash
+git clone --depth=1 --filter=blob:none --sparse \
+  https://github.com/crestreach/ai-dev-agent-config-sync.git ai-dev-agent-config-sync
+git -C ai-dev-agent-config-sync sparse-checkout set scripts skills
+```
+
+To pin a tag instead of `main`, add `--branch vX.Y.Z` to the `git clone` line.
+
+**Update later:** `git -C ai-dev-agent-config-sync pull`.
+
+#### Variant B — tarball (no `.git/` left behind)
+
+Uses GitHub's tarball endpoint and extracts only `scripts/` and `skills/`.
+No Git history, no submodule pointer — just two checked-in directories.
+
+```bash
+# From the root of your other project. Pick main, a branch, or a tag (vX.Y.Z).
+REF=main
+mkdir -p ai-dev-agent-config-sync
+curl -sL "https://github.com/crestreach/ai-dev-agent-config-sync/archive/${REF}.tar.gz" \
+  | tar -xz --strip-components=1 -C ai-dev-agent-config-sync \
+      "ai-dev-agent-config-sync-${REF}/scripts" \
+      "ai-dev-agent-config-sync-${REF}/skills"
+```
+
+PowerShell equivalent (`tar` ships with Windows 10+):
+
+```powershell
+$Ref = 'main'
+New-Item -ItemType Directory -Force ai-dev-agent-config-sync | Out-Null
+Invoke-WebRequest "https://github.com/crestreach/ai-dev-agent-config-sync/archive/$Ref.tar.gz" -OutFile aidacs.tgz
+tar -xzf aidacs.tgz --strip-components=1 -C ai-dev-agent-config-sync `
+  "ai-dev-agent-config-sync-$Ref/scripts" `
+  "ai-dev-agent-config-sync-$Ref/skills"
+Remove-Item aidacs.tgz
+```
+
+**Update later:** rerun the same command. The two directories are
+overwritten in place. Commit the diff if anything changed.
+
+**Trade-off (both variants):** No upstream provenance in your project's Git
+history (variant A keeps a small `.git/` inside the target directory only),
+no automatic update notifications. You decide when to refresh. For most
+consumers this is the right default.
 
 ### Git submodule
 
@@ -481,12 +548,52 @@ git subtree pull --prefix=path/to/ai-dev-agent-config-sync https://github.com/cr
 
 **Trade-off:** One clone for everyone; updates are merges and can conflict.
 
+### After downloading
+
+After the files are in your project (via any of the three methods above), you
+typically want the **`agent-conf-sync` skill** itself installed into each tool's
+native layout so your AI assistant can run future syncs from natural language.
+
+The recommended pattern is to **copy the skill into your own source tree first**
+(so it survives future upstream updates and you can edit it), then run
+`sync-all` from that source tree:
+
+```bash
+# 1. Make sure your source tree has a skills/ directory and AGENTS.md.
+#    If you don't have a source tree yet, create the bare minimum:
+mkdir -p config/skills
+[ -f config/AGENTS.md ] || echo "# Project guidelines" > config/AGENTS.md
+
+# 2. Copy the skill into your source tree.
+cp -R ai-dev-agent-config-sync/skills/agent-conf-sync config/skills/
+
+# 3. Sync it into every tool's native layout (.cursor, .claude, .github, .junie).
+ai-dev-agent-config-sync/scripts/sync-all.sh -i "$PWD/config" -o "$PWD"
+```
+
+Or for a single tool only (e.g. just Claude Code):
+
+```bash
+ai-dev-agent-config-sync/scripts/sync-all.sh -i "$PWD/config" -o "$PWD" --tools claude
+```
+
+PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force config\skills | Out-Null
+if (-not (Test-Path config\AGENTS.md)) { '# Project guidelines' | Set-Content config\AGENTS.md }
+Copy-Item -Recurse ai-dev-agent-config-sync\skills\agent-conf-sync config\skills\
+.\ai-dev-agent-config-sync\scripts\sync-all.ps1 -InputRoot "$PWD\config" -OutputRoot $PWD
+```
+
+After this, your assistant has the skill loaded and you can ask it in plain
+language to "sync agent config", "regenerate Cursor rules", etc.
 ### After vendoring: run sync and decide what to commit
 
 From your project, with this repo at `path/to/ai-dev-agent-config-sync`:
 
 ```bash
-path/to/ai-dev-agent-config-sync/scripts/sync-all.sh -i path/to/ai-dev-agent-config-sync/examples -o .
+path/to/ai-dev-agent-config-sync/scripts/sync-all.sh -i path/to/your/configs -o .
 ```
 
 On Windows, use `path\to\ai-dev-agent-config-sync\scripts\sync-all.ps1`.
@@ -500,9 +607,9 @@ updating the submodule.
 
 | Goal | Approach |
 |------|----------|
+| Smallest footprint, only `scripts/` + `skills/`, no upstream tracking | **Minimal install** (tarball) |
 | Pin versions, update with a few Git commands | **Submodule** |
 | No submodules; single `git clone` for all developers | **Subtree** |
-| Rare updates, minimal Git ceremony | Manual copy or occasional re-copy from a tarball/zip |
 
 ## License
 

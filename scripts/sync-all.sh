@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # Run every sync-*.sh script for the requested tools. Expects a single source
-# tree (agents/, rules/, skills/, AGENTS.md) and one output project root.
+# tree containing AGENTS.md plus any of agents/, rules/, skills/, mcp-servers/
+# (all four are optional), and one output project root.
 #
 # Usage:
 #   sync-all.sh -i <source_root> -o <output_root> [--tools cursor,claude,copilot,vscode,junie] [--items a,b,c] [--clean]
 #
-#   <source_root>  Directory containing: agents/, rules/, skills/, AGENTS.md
-#                  Optionally: mcp-servers/ (one *.json file per MCP server).
-#                  When mcp-servers/ is present, sync-mcp.sh is run for each tool.
+#   <source_root>  Must contain AGENTS.md. May optionally contain any of:
+#                    agents/        (one *.md per agent)
+#                    skills/        (one folder per skill, with SKILL.md)
+#                    rules/         (one *.md per rule)
+#                    mcp-servers/   (one *.json per MCP server)
+#                  Each subscript is skipped when its source dir is absent.
 #   <output_root>  Project root where tool-specific files are written (.cursor, …)
 #                  Each sync-agent-guidelines copies AGENTS.md here when i≠o.
 #   --clean        Forwarded to every per-tool script: clear that script’s
@@ -27,7 +31,7 @@ INPUT_BASE=""
 OUTPUT_BASE=""
 SYNC_ALL_CLEAN=false
 
-_print_usage() { sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; }
+_print_usage() { sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//'; }
 _require_value() {
   local flag="$1" argc="$2"
   if [[ "$argc" -lt 2 ]]; then echo "Error: $flag requires a value." >&2; echo >&2; _print_usage >&2; exit 2; fi
@@ -48,7 +52,7 @@ done
 if [[ -z "$INPUT_BASE" || -z "$OUTPUT_BASE" ]]; then
   echo "Error: -i/--input and -o/--output are required." >&2
   echo >&2
-  sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//' >&2
+  _print_usage >&2
   exit 2
 fi
 
@@ -92,11 +96,23 @@ for tool in "${TOOL_LIST[@]}"; do
     echo "Unknown tool: $tool" >&2; exit 1
   fi
   echo "== $tool =="
-  run_sync "$dir/sync-agents.sh"      -i "$INPUT_BASE/agents"   -o "$OUTPUT_BASE"
-  run_sync "$dir/sync-skills.sh"      -i "$INPUT_BASE/skills"  -o "$OUTPUT_BASE"
+  if [[ -d "$INPUT_BASE/agents" ]]; then
+    run_sync "$dir/sync-agents.sh"      -i "$INPUT_BASE/agents"   -o "$OUTPUT_BASE"
+  else
+    echo "$tool agents: skipped (no $INPUT_BASE/agents)"
+  fi
+  if [[ -d "$INPUT_BASE/skills" ]]; then
+    run_sync "$dir/sync-skills.sh"      -i "$INPUT_BASE/skills"  -o "$OUTPUT_BASE"
+  else
+    echo "$tool skills: skipped (no $INPUT_BASE/skills)"
+  fi
   if [[ -d "$INPUT_BASE/mcp-servers" ]]; then
     run_sync "$dir/sync-mcp.sh"       -i "$INPUT_BASE/mcp-servers" -o "$OUTPUT_BASE"
   fi
   run_sync "$dir/sync-agent-guidelines.sh" -i "$INPUT_BASE" -o "$OUTPUT_BASE"
-  run_sync "$dir/sync-rules.sh"       -i "$INPUT_BASE/rules" -o "$OUTPUT_BASE"
+  if [[ -d "$INPUT_BASE/rules" ]]; then
+    run_sync "$dir/sync-rules.sh"       -i "$INPUT_BASE/rules" -o "$OUTPUT_BASE"
+  else
+    echo "$tool rules: skipped (no $INPUT_BASE/rules)"
+  fi
 done

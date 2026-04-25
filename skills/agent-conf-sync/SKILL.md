@@ -7,7 +7,32 @@ description: Runs the ai-dev-agent-config-sync batch script (`sync-all`) to rege
 
 This skill invokes **`scripts/sync-all.sh`** (macOS/Linux/Git Bash) or **`scripts/sync-all.ps1`** (Windows PowerShell) from the `ai-dev-agent-config-sync` repo. The user describes what they want in plain language; you pick the right script, resolve paths, infer flags, run it, and summarize the result.
 
-Full format reference is in the repo's `README.md`. This skill is only about **invocation and reporting**.
+## Source tree format (`<source_root>`)
+
+A source root must contain `AGENTS.md`. It may optionally contain any of these folders; each is independent and missing folders are skipped with a console note:
+
+| Folder | One per | Purpose |
+|---|---|---|
+| `agents/<name>.md` | file | One agent / subagent definition. |
+| `skills/<name>/SKILL.md` | folder | One Agent-Skills-format skill (plus optional extra files in the same folder). |
+| `rules/<name>.md` | file | One rule with YAML frontmatter (`description`, `applies-to`, `always-apply`). |
+| `mcp-servers/<name>.json` | file | One MCP server definition (body of the per-server config object, no `mcpServers` wrapper). |
+
+## What `sync-all` writes
+
+For each selected tool, `sync-all` writes:
+
+| Tool | Generated paths under `<output_root>` |
+|---|---|
+| `cursor` | `AGENTS.md` (copy), `.cursor/{agents,skills,rules}/`, `.cursor/mcp.json` |
+| `claude` | `CLAUDE.md` (AGENTS + rules merged), `.claude/{agents,skills}/`, `.mcp.json` |
+| `copilot` | `.github/copilot-instructions.md`, `.github/{agents,skills,instructions}/` |
+| `vscode` | `.vscode/mcp.json` (also read by Copilot Chat in VS Code) |
+| `junie` | `.junie/AGENTS.md` (AGENTS + rules merged), `.junie/{agents,skills}/` |
+
+`sync-agent-guidelines` always emits the **full** `AGENTS.md` / `CLAUDE.md` / `.junie/AGENTS.md` — `--items` does not trim it. Claude and Junie have no per-rule files (rules are appended into the guidelines file).
+
+This skill is only about **invocation and reporting**. For source-format details (rule frontmatter fields, secret-token translation, agent ↔ MCP linkage) see the upstream `README.md`.
 
 ## When to apply
 
@@ -49,7 +74,7 @@ Use **absolute paths** when invoking the script.
 
 ### Input root — `-i` / `-InputRoot` (required)
 
-The directory that contains `AGENTS.md`, `agents/`, `skills/`, `rules/` (the generic authoring tree). May optionally contain `mcp-servers/` — when present, `sync-all` also generates the per-tool MCP config (Cursor `.cursor/mcp.json`, Claude `.mcp.json`, VS Code `.vscode/mcp.json`; Junie prints the snippet to stdout). `.vscode/mcp.json` is written by the `vscode` tool, not by `copilot` (it is a VS Code file, not a Copilot file).
+The directory that contains `AGENTS.md` and optionally any of `agents/`, `skills/`, `rules/`, `mcp-servers/` (see [Source tree format](#source-tree-format-source_root) above). Each folder is independent — `sync-all` skips the corresponding subscript (with a console note) when its source dir is absent. Only `AGENTS.md` is mandatory; if it is missing, `sync-all` exits with an error.
 
 Mapping from user phrasing:
 

@@ -2,12 +2,13 @@
 .SYNOPSIS
   Run every sync-*.ps1 for the requested tools.
 .DESCRIPTION
-  Expects a single source tree (agents/, rules/, skills/, AGENTS.md) and one
-  output project root.
+  Expects a single source tree containing AGENTS.md plus any of agents/,
+  rules/, skills/, mcp-servers/ (all four are optional) and one output
+  project root. Each subscript is skipped when its source dir is absent.
 .PARAMETER InputRoot
-  Directory containing: agents/, rules/, skills/, and AGENTS.md.
-  Optionally: mcp-servers/ (one *.json file per MCP server). When mcp-servers/
-  is present, sync-mcp.ps1 is run for each tool.
+  Directory containing AGENTS.md. May optionally contain agents/, skills/,
+  rules/, and mcp-servers/. Subscripts whose source dir is missing are
+  skipped with a console note.
 .PARAMETER OutputRoot
   Project root where tool-specific files are written. Each
   sync-agent-guidelines run copies AGENTS.md when input≠output.
@@ -59,12 +60,27 @@ foreach ($tool in $toolList) {
   $dir = Join-Path $PSScriptRoot $tool
   if (-not (Test-Path $dir)) { throw "Unknown tool: $tool" }
   Write-Host "== $tool =="
-  & (Join-Path $dir 'sync-agents.ps1') -InputPath (Join-Path $inputBase 'agents') -OutputPath $outputBase @itemArgs @cleanArgs
-  & (Join-Path $dir 'sync-skills.ps1') -InputPath (Join-Path $inputBase 'skills') -OutputPath $outputBase @itemArgs @cleanArgs
+  $agentsSrc = Join-Path $inputBase 'agents'
+  if (Test-Path -LiteralPath $agentsSrc -PathType Container) {
+    & (Join-Path $dir 'sync-agents.ps1') -InputPath $agentsSrc -OutputPath $outputBase @itemArgs @cleanArgs
+  } else {
+    Write-Host "$tool agents: skipped (no $agentsSrc)"
+  }
+  $skillsSrc = Join-Path $inputBase 'skills'
+  if (Test-Path -LiteralPath $skillsSrc -PathType Container) {
+    & (Join-Path $dir 'sync-skills.ps1') -InputPath $skillsSrc -OutputPath $outputBase @itemArgs @cleanArgs
+  } else {
+    Write-Host "$tool skills: skipped (no $skillsSrc)"
+  }
   $mcpSrc = Join-Path $inputBase 'mcp-servers'
   if (Test-Path -LiteralPath $mcpSrc -PathType Container) {
     & (Join-Path $dir 'sync-mcp.ps1') -InputPath $mcpSrc -OutputPath $outputBase @itemArgs @cleanArgs
   }
   & (Join-Path $dir 'sync-agent-guidelines.ps1') -InputPath $inputBase -OutputPath $outputBase @cleanArgs
-  & (Join-Path $dir 'sync-rules.ps1') -InputPath (Join-Path $inputBase 'rules') -OutputPath $outputBase @itemArgs @cleanArgs
+  $rulesSrc = Join-Path $inputBase 'rules'
+  if (Test-Path -LiteralPath $rulesSrc -PathType Container) {
+    & (Join-Path $dir 'sync-rules.ps1') -InputPath $rulesSrc -OutputPath $outputBase @itemArgs @cleanArgs
+  } else {
+    Write-Host "$tool rules: skipped (no $rulesSrc)"
+  }
 }
