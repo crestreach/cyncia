@@ -1,8 +1,58 @@
 # Agent guidance (cyncia)
 
-Conventions for AI assistants working in this repository.
+## Repository layout
+
+### Your generic source tree (you author these)
+
+You provide a **source root** directory to `sync-all` (or call per-tool scripts
+directly). Only `AGENTS.md` is required; every subfolder is **optional** and
+the corresponding sync step is skipped with a console note when its folder is absent.
+
+| Path (relative to your source root) | Required | Meaning |
+|---|---|---|
+| `AGENTS.md` | **yes** | Project-wide guidelines (the “generic” source). |
+| `agents/<name>.md` | optional | One agent / subagent definition per file. |
+| `skills/<name>/SKILL.md` | optional | One skill per folder (Agent Skills format). |
+| `rules/<name>.md` | optional | One rule per file (generic frontmatter defined by this repo). |
+| `mcp-servers/<name>.json` | optional | One MCP server config per file (see [Internal format: MCP servers](README.md#internal-format-mcp-servers)). |
+
+In *this repository*, `.agent-config/` is just the authoring tree used to build the repo’s own generated outputs. You do **not** need (and usually should not use) `.agent-config/` in your own project — create your own source tree anywhere and point `-i`/`-InputRoot` script parameters at it.
+
+### Generated outputs (written into your output root)
+
+The sync scripts write tool-specific files under your **output root**:
+
+| Generated from | Cursor | Claude Code | GitHub Copilot | VS Code | JetBrains Junie |
+|---|---|---|---|---|---|
+| `agents/<name>.md` | `.cursor/agents/<name>.md` | `.claude/agents/<name>.md` | `.github/agents/<name>.md` | *(no file)* | `.junie/agents/<name>.md` |
+| `skills/<name>/…` | `.cursor/skills/<name>/…` | `.claude/skills/<name>/…` | `.github/skills/<name>/…` | *(no file)* | `.junie/skills/<name>/…` |
+| `rules/<name>.md` | `.cursor/rules/<name>.mdc` | *(not generated)* | `.github/instructions/<name>.instructions.md` | *(no file)* | *(not generated)* |
+| `mcp-servers/<name>.json` | `.cursor/mcp.json` | `.mcp.json` (project root) | *(no file — `.vscode/mcp.json` is written by the **vscode** tool)* | `.vscode/mcp.json` (+ `inputs[]`) | *(stdout snippet only — no file)* |
+| `AGENTS.md` | `AGENTS.md` (copied to output root when source root ≠ output root) | `CLAUDE.md` (generated from `AGENTS.md` + `rules/*.md`) | `.github/copilot-instructions.md` (copied from `AGENTS.md`) | *(no file)* | `.junie/AGENTS.md` (generated from `AGENTS.md` + `rules/*.md`) |
+
+Notes:
+
+- **Claude rules:** rule bodies are appended into `CLAUDE.md` by `sync-agent-guidelines`.
+- **Junie rules:** Junie has no per-rule file format, so rule bodies are appended into `.junie/AGENTS.md` by `sync-agent-guidelines` (and `sync-rules` remains a no-op).
+
+## Agent configuration management (cyncia)
+
+This repo manages all of its AI-assistant configuration — guidelines (`AGENTS.md`), rules, skills, agents, and MCP servers — through [`.cyncia`](./.cyncia). The single generic source tree lives in [`.agent-config/`](./.agent-config); per-tool layouts (`.cursor/`, `.claude/`, `.github/`, `.junie/`, `.vscode/`, root `AGENTS.md`, `CLAUDE.md`) are generated from it. The `agent-conf-sync` and skill invokes the sync via `.cyncia/scripts/sync-all.sh` (POSIX) or `.cyncia/scripts/sync-all.ps1` (Windows).
+
+When asked to **create or update** any of (or if any of the folliwing gets updated):
+
+- a guideline (the root `AGENTS.md`)
+- a rule
+- a skill
+- a subagent
+- an MCP server entry
+
+read [`.cyncia/README.md`](./.cyncia/README.md) for the source-tree format (frontmatter fields, secret-token translation, agent ↔ MCP linkage), author the file under the appropriate folder of `.agent-config/` (`.agent-config/{rules,skills,agents,mcp-servers}/`), and then re-run the sync (skill `agent-conf-sync`) to fan it out to the per-tool directories. Do not hand-edit the generated `.cursor/`, `.claude/`, `.github/`, `.junie/`, `.vscode/` files — they are overwritten on the next sync.
+
 
 ## Guidelines
+
+Conventions for AI assistants working in this repository.
 
 ### General
 
