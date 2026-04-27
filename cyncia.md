@@ -392,191 +392,146 @@ Example prompts:
   - The MCP step is **skipped entirely** when `<source_root>/mcp-servers/`
     does not exist, so projects without MCP servers do not need to create
     the directory — and do not need `jq` at all.
-- **Git** — only for the install methods (submodule / subtree / sparse
-  clone) described under [Using this repo inside another Git project](#using-this-repo-inside-another-git-project).
-  Not needed at sync time.
+- **Git** — not required by the installer or by sync time. Only needed if you
+  want to track this repo via your own Git workflow.
 - Standard POSIX utilities (`sed`, `awk`, `grep`, `find`, `cp`, `mv`) —
   already present on macOS, Linux, WSL, and Git Bash.
 
-## Using this repo inside another Git project
+## Install
 
-If your application already lives in its own Git repository, you can **pull in
-this one** as a dependency and run the sync scripts from a subdirectory.
-
-There are three approaches in increasing order of Git ceremony:
-
-1. **Minimal install** — download only `scripts/` and `skills/` from a tarball
-   (simplest, no upstream tracking).
-2. **Git submodule** — pin a commit, easy updates with a few Git commands.
-3. **Git subtree** — no submodules; everything in one clone.
-
-Reference docs: [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules),
-[Git subtree (Atlassian)](https://www.atlassian.com/git/tutorials/git-subtree).
-
-### Minimal install (only `scripts/` and `skills/`)
-
-The simplest setup pulls **only the two directories you need** from a tagged
-release or `main` into a directory of your choice (the examples use
-`.cyncia/` at your project root — the default in this guide; you can pick any
-name, it's just a plain subdirectory in your repo, not auto-tracked or
-auto-linked to upstream).
-Two equivalent variants:
-
-#### Variant A — `git sparse-checkout` (two commands)
-
-Shortest to type. Leaves a small `.git/` inside the target directory so you
-can `git pull` to update.
+The recommended way to install or update cyncia in a project is the bundled
+installer script:
 
 ```bash
-git clone --depth=1 --filter=blob:none --sparse \
-  https://github.com/crestreach/cyncia.git .cyncia
-git -C .cyncia sparse-checkout set scripts skills
+curl -fsSL https://raw.githubusercontent.com/crestreach/cyncia/main/install/install.sh | bash
 ```
 
-To pin a tag instead of `main`, add `--branch vX.Y.Z` to the `git clone` line.
+It is **idempotent**: running it again later upgrades `.cyncia/` to the latest
+snapshot of the chosen ref and offers to refresh skills you previously copied
+into `.agent-config/skills/`.
 
-**Update later:** `git -C .cyncia pull`.
+### What the installer does
 
-#### Variant B — tarball (no `.git/` left behind)
+In order, the script:
 
-Uses GitHub's tarball endpoint and extracts only `scripts/` and `skills/`.
-No Git history, no submodule pointer — just two checked-in directories.
+1. **Prepares the source tree** at `<config-dir>/` (default `.agent-config/`).
+   Creates `agents/`, `skills/`, `rules/`, `mcp-servers/` if missing. Writes a
+   stub `AGENTS.md` only if no `AGENTS.md` already exists — never overwrites
+   your guidelines.
+2. **Downloads a snapshot** of cyncia from
+   `https://github.com/<repo>/archive/<ref>.tar.gz` (default `crestreach/cyncia`
+   @ `main`) and copies `scripts/`, `skills/`, `examples/`, `README.md`, and
+   `cyncia.md` into `<cyncia-dir>/` (default `.cyncia/`). Existing `scripts/`,
+   `skills/`, and `examples/` trees in `<cyncia-dir>/` are removed first so
+   deletions upstream propagate; `README.md` and `cyncia.md` are overwritten
+   in place.
+3. **Optionally copies bundled skills** from `<cyncia-dir>/skills/` into
+   `<config-dir>/skills/`. Skills are split into two prompts: missing-here
+   skills (offered as a copy) and already-present skills (offered as an
+   overwrite-with-upstream).
+4. **Optionally runs `sync-all`**:
+   `bash <cyncia-dir>/scripts/sync-all.sh -i <config-dir> -o .`
+5. **Prints a `jq` notice** (only required by the MCP sync step) with
+   per-OS install commands.
+6. **Prints the "After installing" section** read directly from the freshly
+   downloaded `<cyncia-dir>/README.md`, so the post-install guidance stays
+   in sync with the upstream docs.
+
+### Flags and environment
+
+| Flag | Default | Effect |
+|---|---|---|
+| `--config-dir PATH` | `.agent-config` | Authoring source tree. |
+| `--cyncia-dir PATH` | `.cyncia` | Where the cyncia checkout lives. |
+| `--ref REF` | `main` | Git branch or tag to download. Tags drop a leading `v` in the GitHub tarball prefix; the script handles that. |
+| `--repo OWNER/NAME` | `crestreach/cyncia` | GitHub repo to download from. |
+| `--bootstrap` | — | Answer **yes** to every prompt (copy skills + run `sync-all`). |
+| `--no-bootstrap` | — | Answer **no** to every prompt. Useful for unattended pipes. |
+| `-h`, `--help` | — | Print usage and exit. |
+
+| Env var | Equivalent flag |
+|---|---|
+| `CYNCIA_REPO` | `--repo` |
+| `CYNCIA_REF`  | `--ref`  |
+
+When `bash` is connected to a terminal, prompts read from `/dev/tty` so
+`curl … \| bash` still allows interactive answers. When there is no TTY and
+neither `--bootstrap` nor `--no-bootstrap` was passed, the script defaults to
+**no** for each prompt.
+
+Required tools on the host running the installer: `bash`, `curl`, `tar`,
+`mktemp`, `find`.
+
+### Examples
+
+Interactive (prompts for skill copy and `sync-all`):
 
 ```bash
-# From the root of your other project. Pick main, a branch, or a tag (vX.Y.Z).
-REF=main
-mkdir -p .cyncia
-curl -sL "https://github.com/crestreach/cyncia/archive/${REF}.tar.gz" \
-  | tar -xz --strip-components=1 -C .cyncia \
-      "cyncia-${REF}/scripts" \
-      "cyncia-${REF}/skills"
+curl -fsSL https://raw.githubusercontent.com/crestreach/cyncia/main/install/install.sh | bash
 ```
 
-PowerShell equivalent (`tar` ships with Windows 10+):
-
-```powershell
-$Ref = 'main'
-New-Item -ItemType Directory -Force .cyncia | Out-Null
-Invoke-WebRequest "https://github.com/crestreach/cyncia/archive/$Ref.tar.gz" -OutFile cyncia.tgz
-tar -xzf cyncia.tgz --strip-components=1 -C .cyncia `
-  "cyncia-$Ref/scripts" `
-  "cyncia-$Ref/skills"
-Remove-Item cyncia.tgz
-```
-
-**Update later:** rerun the same command. The two directories are
-overwritten in place. Commit the diff if anything changed.
-
-**Trade-off (both variants):** No upstream provenance in your project's Git
-history (variant A keeps a small `.git/` inside the target directory only),
-no automatic update notifications. You decide when to refresh. For most
-consumers this is the right default.
-
-### Git submodule
-
-The parent repo records **which commit** of `cyncia` it uses. Replace the URL
-with your fork if needed.
+One-shot bootstrap (no prompts, do everything):
 
 ```bash
-# From the root of your other project
-git submodule add https://github.com/crestreach/cyncia.git .cyncia
-git commit -m "Add cyncia as a submodule"
+curl -fsSL https://raw.githubusercontent.com/crestreach/cyncia/main/install/install.sh \
+  | bash -s -- --bootstrap
 ```
 
-**Cloning a project that already has submodules:**
+Pin a release, custom directories:
 
 ```bash
-git clone --recurse-submodules https://github.com/yourorg/your-app.git
-# or after a normal clone:
-git submodule update --init --recursive
+curl -fsSL https://raw.githubusercontent.com/crestreach/cyncia/main/install/install.sh \
+  | bash -s -- --ref v1.0.0 --config-dir my-config --cyncia-dir vendor/cyncia --bootstrap
 ```
 
-**Update the submodule to the latest on `main`**, then commit the new pointer in
-the parent:
+Run from a fork or branch:
 
 ```bash
-cd .cyncia
-git fetch origin
-git checkout main
-git pull
-cd -
-git add .cyncia
-git commit -m "Bump cyncia submodule"
+curl -fsSL https://raw.githubusercontent.com/yourorg/cyncia/feature-x/install/install.sh \
+  | bash -s -- --repo yourorg/cyncia --ref feature-x
 ```
 
-To **pin a release**, check out a tag inside the submodule (`git checkout v1.2.3`)
-and commit the parent.
-
-**Trade-off:** Clear provenance and version pins; teammates must run
-`submodule update` when they pull. Submodules typically include the **whole**
-upstream repository; to use only part of it, keep the full submodule and run
-sync from it, or maintain a small copy script (see below).
-
-### Git subtree
-
-Upstream is merged into a **prefix directory** inside your single repository;
-`git clone` of your app does not need `--recurse-submodules`.
+Update an existing checkout to the latest `main`:
 
 ```bash
-git subtree add --prefix=.cyncia https://github.com/crestreach/cyncia.git main --squash
+curl -fsSL https://raw.githubusercontent.com/crestreach/cyncia/main/install/install.sh | bash
 ```
 
-**Update later** (may require merge conflict resolution):
+This re-downloads the tarball, replaces `<cyncia-dir>/scripts` and
+`<cyncia-dir>/skills`, and asks whether to overwrite the skills you keep
+under `<config-dir>/skills/`.
 
-```bash
-git subtree pull --prefix=.cyncia https://github.com/crestreach/cyncia.git main --squash
-```
+### After installing
 
-**Trade-off:** One clone for everyone; updates are merges and can conflict.
+The installer already performs steps 1 and 2 below when you accept its prompts
+(or pass `--bootstrap`). The notes are kept here for runs where those prompts
+were declined, or for projects vendored without the installer.
 
-### After downloading
+1. **Create a source tree** at `<config-dir>/` (*only if skipped during the
+   installer run*). Only `AGENTS.md` is required; every subfolder is optional:
 
-After the files are in your project (via any of the three methods above), you
-typically want the **`agent-conf-sync` skill** itself installed into each tool's
-native layout so your AI assistant can run future syncs from natural language.
+   ```bash
+   mkdir -p .agent-config/skills
+   cp AGENTS.md .agent-config/AGENTS.md
+   ```
 
-The recommended pattern is to **copy the skill into your own source tree first**
-(so it survives future upstream updates and you can edit it), then run
-`sync-all` from that source tree:
+2. **Install the `agent-conf-sync` skill** into your assistant so it can run
+   syncs from natural language (*only if skipped during the installer run*).
+   Copy it into your source tree, then sync:
 
-```bash
-# 1. Make sure your source tree has a skills/ directory and AGENTS.md.
-#    If you don't have a source tree yet, create the bare minimum:
-mkdir -p .agent-config/skills
-[ -f .agent-config/AGENTS.md ] || echo "# Project guidelines" > .agent-config/AGENTS.md
+   ```bash
+   cp -R .cyncia/skills/agent-conf-sync .agent-config/skills/
+   .cyncia/scripts/sync-all.sh -i "$PWD/.agent-config" -o "$PWD"
+   ```
 
-# 2. Copy the skill into your source tree.
-cp -R .cyncia/skills/agent-conf-sync .agent-config/skills/
+   PowerShell:
 
-# 3. Sync it into every tool's native layout (.cursor, .claude, .github, .junie).
-.cyncia/scripts/sync-all.sh -i "$PWD/.agent-config" -o "$PWD"
-```
+   ```powershell
+   Copy-Item -Recurse .cyncia\skills\agent-conf-sync .agent-config\skills\
+   .\.cyncia\scripts\sync-all.ps1 -InputRoot "$PWD\.agent-config" -OutputRoot $PWD
+   ```
 
-Or for a single tool only (e.g. just Claude Code):
-
-```bash
-.cyncia/scripts/sync-all.sh -i "$PWD/.agent-config" -o "$PWD" --tools claude
-```
-
-PowerShell:
-
-```powershell
-New-Item -ItemType Directory -Force .agent-config\skills | Out-Null
-if (-not (Test-Path .agent-config\AGENTS.md)) { '# Project guidelines' | Set-Content .agent-config\AGENTS.md }
-Copy-Item -Recurse .cyncia\skills\agent-conf-sync .agent-config\skills\
-.\.cyncia\scripts\sync-all.ps1 -InputRoot "$PWD\.agent-config" -OutputRoot $PWD
-```
-
-Or just **ask your AI assistant to do it**, e.g.:
-
-> Copy `.cyncia/skills/agent-conf-sync` into `.agent-config/skills/`, then run
-> `.cyncia/scripts/sync-all.sh -i .agent-config -o .` to install the skill into
-> every tool's native layout.
-
-After this, your assistant has the skill loaded and you can ask it in plain
-language to *“sync agent config”*, *“regenerate Cursor rules”*, etc.
-
-### Enable Cyncia's automatic behavior in your repo
+3. **(Optional, but recommended) Enable Cyncia's automatic agent behavior in your repo.**
 
 To make any AI assistant working in your project pick up the Cyncia workflow
 automatically (read the source-tree format, author files under your authoring
@@ -605,28 +560,9 @@ When asked to **create or update** any of (or if any of the following gets updat
 read [`.cyncia/README.md`](./.cyncia/README.md) for the source-tree format (frontmatter fields, secret-token translation, agent ↔ MCP linkage), author the file under the appropriate folder of `.agent-config/` (`.agent-config/{rules,skills,agents,mcp-servers}/`), and then re-run the sync (skill `agent-conf-sync`) to fan it out to the per-tool directories. Do not hand-edit the generated `.cursor/`, `.claude/`, `.github/`, `.junie/`, `.vscode/` files — they are overwritten on the next sync.
 ```
 
-### After vendoring: run sync and decide what to commit
-
-From your project, with this repo at `.cyncia/`:
-
-```bash
-.cyncia/scripts/sync-all.sh -i .agent-config -o .
-```
-
-On Windows, use `.cyncia\scripts\sync-all.ps1`.
-
 Then either **commit the generated** `.cursor/`, `.github/`, `.claude/`,
-`.junie/`, and copies of guidelines in your app repo so the team gets them
-without running scripts, **or** document that everyone must run `sync-all` after
-updating the submodule.
-
-### Quick choice
-
-| Goal | Approach |
-|------|----------|
-| Smallest footprint, only `scripts/` + `skills/`, no upstream tracking | **Minimal install** (sparse / tarball) |
-| Pin versions, update with a few Git commands | **Submodule** |
-| No submodules; single `git clone` for all developers | **Subtree** |
+`.junie/`, `AGENTS.md`, and `CLAUDE.md` so the team gets them without running
+scripts, **or** document that everyone must run `sync-all` after pulling.
 
 ## License
 

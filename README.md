@@ -52,47 +52,58 @@ Along the way it also rewrites **frontmatter** to each tool's native shape:
 - **`jq` 1.6+** — required only by the MCP sync (`sync-mcp.{sh,ps1}` and the
   MCP step of `sync-all`); install with `brew install jq` /
   `apt-get install jq` / `winget install jqlang.jq`.
-- **Git** — only for the install methods below (submodule / subtree /
-  sparse clone). Not needed at sync time.
+- **Git** — not required by the installer or by sync time.
 - Standard POSIX utilities (`sed`, `awk`, `grep`, `find`) — already present
   on macOS, Linux, WSL, and Git Bash.
 
 ## Install
 
-Pick one — examples assume the default location **`.cyncia/`** at your project root.
+From your project root, run the installer:
 
 ```bash
-# Sparse checkout (smallest, can `git pull` to update)
-git clone --depth=1 --filter=blob:none --sparse \
-  https://github.com/crestreach/cyncia.git .cyncia
-git -C .cyncia sparse-checkout set scripts skills
+curl -fsSL https://raw.githubusercontent.com/crestreach/cyncia/main/install/install.sh | bash
 ```
+
+The installer creates `.agent-config/` (with empty `agents/`, `skills/`, `rules/`,
+`mcp-servers/` and a stub `AGENTS.md`), downloads a snapshot of cyncia into
+`.cyncia/`, and prompts whether to copy the bundled skills into
+`.agent-config/skills/` and run `sync-all` immediately. Re-running it later
+**updates** the existing `.cyncia/` checkout.
+
+Common parameters (pass after `bash -s --`):
+
+| Flag | Default | Purpose |
+|---|---|---|
+| `--config-dir PATH` | `.agent-config` | Authoring source tree. |
+| `--cyncia-dir PATH` | `.cyncia` | Where the cyncia checkout lives. |
+| `--ref REF` | `main` | Branch or tag to download. |
+| `--repo OWNER/NAME` | `crestreach/cyncia` | GitHub repo to download from. |
+| `--bootstrap` | — | Answer "yes" to all prompts (copy skills + run `sync-all`). |
+| `--no-bootstrap` | — | Answer "no" to all prompts (unattended `curl \| bash`). |
+
+Example — pin a tag, full bootstrap, custom dirs:
 
 ```bash
-# Or as a submodule (pinned commit, easy bumps)
-git submodule add https://github.com/crestreach/cyncia.git .cyncia
+curl -fsSL https://raw.githubusercontent.com/crestreach/cyncia/main/install/install.sh \
+  | bash -s -- --ref v1.0.0 --config-dir my-config --cyncia-dir vendor/cyncia --bootstrap
 ```
 
-```bash
-# Or as a subtree (single clone, no submodule machinery)
-git subtree add --prefix=.cyncia https://github.com/crestreach/cyncia.git main --squash
-```
-
-Other variants (tarball, alternative paths, Windows): see
-[`cyncia.md` → Using this repo inside another Git project](cyncia.md#using-this-repo-inside-another-git-project).
+Full installer reference (all flags, env vars, behavior on re-run): see
+[`cyncia.md` → Install](cyncia.md#install).
 
 ## After installing
 
-1. **Create a source tree** at `.agent-config/` (only `AGENTS.md` is required;
-   every subfolder is optional):
+1. **Create a source tree** at `.agent-config/` (*only if skipped during the
+   installer run*). Only `AGENTS.md` is required; every subfolder is optional:
 
    ```bash
    mkdir -p .agent-config/skills
-   echo "# Project guidelines" > .agent-config/AGENTS.md
+   cp AGENTS.md .agent-config/AGENTS.md
    ```
 
 2. **Install the `agent-conf-sync` skill** into your assistant so it can run
-   syncs from natural language. Copy it into your source tree, then sync:
+   syncs from natural language (*only if skipped during the installer run*).
+   Copy it into your source tree, then sync:
 
    ```bash
    cp -R .cyncia/skills/agent-conf-sync .agent-config/skills/
@@ -105,7 +116,7 @@ Other variants (tarball, alternative paths, Windows): see
    > then run `.cyncia/scripts/sync-all.sh -i .agent-config -o .` to install
    > the skill into every tool's native layout.
 
-3. **(Optional) Enable Cyncia's automatic agent behavior.** Paste the block
+3. **(Optional, but recommended) Enable Cyncia's automatic agent behavior.** Paste the block
    below into **your** project's `AGENTS.md` (the source one, under
    `.agent-config/`) and re-run the sync. AI assistants will then know to
    author new rules/skills/agents/MCP servers under `.agent-config/` and
