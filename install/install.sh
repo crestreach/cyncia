@@ -16,10 +16,11 @@
 #      and examples/ trees in that directory are replaced; README.md and
 #      cyncia.md are overwritten.
 #   3. Optionally copies (or updates) skills from .cyncia/skills/ into
-#      <config-dir>/skills/ — interactive by default; --bootstrap says yes,
-#      --no-bootstrap says no.
+#      <config-dir>/skills/ — interactive prompt defaults to "yes"; pass
+#      --no-bootstrap to skip without asking. Without a TTY (e.g. 'curl |
+#      bash') the answer is also "yes" by default.
 #   4. Optionally runs sync-all to generate the per-tool layouts — same
-#      interactive / --bootstrap / --no-bootstrap rules.
+#      yes-by-default / --no-bootstrap rules.
 #   5. Prints jq install hints (jq is required only by the MCP sync step).
 #   6. Prints the "After installing" section straight from the downloaded
 #      README.md.
@@ -46,10 +47,11 @@ Options:
   --cyncia-dir PATH   Where the cyncia checkout lives (default: .cyncia)
   --ref REF           Git branch or tag to download   (default: main)
   --repo OWNER/NAME   GitHub repo to download from    (default: crestreach/cyncia)
-  --bootstrap         Answer "yes" to every prompt: copy/update skills into
-                      <config-dir>/skills and run sync-all afterwards.
-  --no-bootstrap      Answer "no" to every prompt (useful for unattended runs
-                      such as 'curl | bash' where there is no TTY).
+  --bootstrap         Answer "yes" to every prompt without asking. This is
+                      also the default when there is no TTY (e.g. piped from
+                      curl); use --no-bootstrap to opt out in that case.
+  --no-bootstrap      Answer "no" to every prompt: skip copying skills into
+                      <config-dir>/skills and skip running sync-all.
   -h, --help          Show this help and exit.
 
 Env overrides:
@@ -79,22 +81,28 @@ done
 
 # --- helpers ----------------------------------------------------------------
 
-# Read a yes/no answer. Honors --bootstrap / --no-bootstrap. Falls back to
-# "no" when there is no controlling TTY (e.g. piped from curl) and the user
-# did not pre-answer with a flag.
+# Read a yes/no answer. Honors --bootstrap / --no-bootstrap. Defaults to
+# "yes" — both at the interactive prompt (empty reply means yes) and when
+# there is no controlling TTY (e.g. 'curl | bash'), so the common case
+# "install everything" works with zero typing. Use --no-bootstrap to opt out.
 ask_yes_no() {
-  local prompt="$1" default_no_msg="$2"
+  local prompt="$1" default_yes_msg="$2"
   case "$INTERACTIVE_MODE" in
     yes) echo "  [bootstrap] $prompt -> yes"; return 0 ;;
     no)  echo "  [no-bootstrap] $prompt -> no";  return 1 ;;
   esac
-  if [[ ! -r /dev/tty ]]; then
-    echo "  (no TTY) $prompt -> no ($default_no_msg)"
-    return 1
+  # Probe whether /dev/tty can actually be opened for reading. Just testing
+  # `[ -r /dev/tty ]` is not enough on macOS — the file mode says "readable"
+  # even from a session with no controlling terminal, where the open(2) call
+  # would fail with ENXIO.
+  if ! ( exec </dev/tty ) 2>/dev/null; then
+    echo "  (no TTY) $prompt -> yes ($default_yes_msg)"
+    return 0
   fi
   local reply
-  read -r -p "  $prompt [y/N] " reply </dev/tty || reply=""
-  [[ "$reply" =~ ^[Yy]([Ee][Ss])?$ ]]
+  read -r -p "  $prompt [Y/n] " reply </dev/tty || reply=""
+  # Empty reply or anything starting with y/Y -> yes; only an explicit n/N -> no.
+  [[ -z "$reply" || "$reply" =~ ^[Yy]([Ee][Ss])?$ ]]
 }
 
 # --- 1. Authoring source tree ------------------------------------------------
@@ -266,7 +274,7 @@ if (( ${#NEW_SKILLS[@]} > 0 )); then
   echo "==> Skills available in $CYNCIA_DIR/skills/ but missing from $CONFIG_DIR/skills/:"
   for n in "${NEW_SKILLS[@]}"; do echo "      - $n"; done
   if ask_yes_no "Copy these skills into $CONFIG_DIR/skills/?" \
-                "skip; copy manually later"; then
+                "copy them"; then
     for n in "${NEW_SKILLS[@]}"; do
       copy_skill "$n"
       echo "    copied $n -> $CONFIG_DIR/skills/$n"
@@ -279,7 +287,7 @@ if (( ${#EXISTING_SKILLS[@]} > 0 )); then
   echo "==> Skills already present in $CONFIG_DIR/skills/ that also ship with cyncia:"
   for n in "${EXISTING_SKILLS[@]}"; do echo "      - $n"; done
   if ask_yes_no "Overwrite them with the upstream copies from $CYNCIA_DIR/skills/?" \
-                "keep your local versions"; then
+                "overwrite with upstream"; then
     for n in "${EXISTING_SKILLS[@]}"; do
       copy_skill "$n"
       echo "    updated $CONFIG_DIR/skills/$n"
@@ -293,7 +301,7 @@ SYNC_SCRIPT="$CYNCIA_DIR/scripts/sync-all.sh"
 if [[ -f "$SYNC_SCRIPT" ]]; then
   echo
   if ask_yes_no "Run $SYNC_SCRIPT -i $CONFIG_DIR -o . now?" \
-                "you can run it later"; then
+                "running it now"; then
     bash "$SYNC_SCRIPT" -i "$CONFIG_DIR" -o "."
   fi
 fi

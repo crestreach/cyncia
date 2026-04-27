@@ -67,7 +67,9 @@ curl -fsSL https://raw.githubusercontent.com/crestreach/cyncia/main/install/inst
 The installer creates `.agent-config/` (with empty `agents/`, `skills/`, `rules/`,
 `mcp-servers/` and a stub `AGENTS.md`), downloads a snapshot of cyncia into
 `.cyncia/`, and prompts whether to copy the bundled skills into
-`.agent-config/skills/` and run `sync-all` immediately. Re-running it later
+`.agent-config/skills/` and run `sync-all` immediately. Both prompts default
+to **yes** — pressing Enter (or running with no TTY, as under `curl | bash`)
+accepts; pass `--no-bootstrap` to decline both. Re-running it later
 **updates** the existing `.cyncia/` checkout.
 
 Common parameters (pass after `bash -s --`):
@@ -78,8 +80,8 @@ Common parameters (pass after `bash -s --`):
 | `--cyncia-dir PATH` | `.cyncia` | Where the cyncia checkout lives. |
 | `--ref REF` | `main` | Branch or tag to download. |
 | `--repo OWNER/NAME` | `crestreach/cyncia` | GitHub repo to download from. |
-| `--bootstrap` | — | Answer "yes" to all prompts (copy skills + run `sync-all`). |
-| `--no-bootstrap` | — | Answer "no" to all prompts (unattended `curl \| bash`). |
+| `--bootstrap` | — | Answer "yes" to all prompts without asking (the default when there is no TTY, e.g. piped from `curl`). |
+| `--no-bootstrap` | — | Answer "no" to all prompts: skip copying skills into `<config-dir>/skills/` and skip running `sync-all`. |
 
 Example — pin a tag, full bootstrap, custom dirs:
 

@@ -451,8 +451,8 @@ In order, the script:
 | `--cyncia-dir PATH` | `.cyncia` | Where the cyncia checkout lives. |
 | `--ref REF` | `main` | Git branch or tag to download. Tags drop a leading `v` in the GitHub tarball prefix; the script handles that. |
 | `--repo OWNER/NAME` | `crestreach/cyncia` | GitHub repo to download from. |
-| `--bootstrap` | — | Answer **yes** to every prompt (copy skills + run `sync-all`). |
-| `--no-bootstrap` | — | Answer **no** to every prompt. Useful for unattended pipes. |
+| `--bootstrap` | — | Answer **yes** to every prompt without asking. This is also the default behavior when there is no TTY (e.g. piped from `curl`); use this flag to be explicit in scripts. |
+| `--no-bootstrap` | — | Answer **no** to every prompt: skip copying skills into `<config-dir>/skills/` and skip running `sync-all`. |
 | `-h`, `--help` | — | Print usage and exit. |
 
 | Env var | Equivalent flag |
@@ -460,10 +460,12 @@ In order, the script:
 | `CYNCIA_REPO` | `--repo` |
 | `CYNCIA_REF`  | `--ref`  |
 
-When `bash` is connected to a terminal, prompts read from `/dev/tty` so
-`curl … \| bash` still allows interactive answers. When there is no TTY and
-neither `--bootstrap` nor `--no-bootstrap` was passed, the script defaults to
-**no** for each prompt.
+Both prompts default to **yes**. When `bash` is connected to a terminal,
+prompts read from `/dev/tty` so `curl … \| bash` still allows interactive
+answers — pressing Enter (empty reply) accepts; type `n` to decline. When
+there is no TTY and neither `--bootstrap` nor `--no-bootstrap` was passed,
+the script proceeds with **yes** for each prompt; pass `--no-bootstrap` to
+opt out without typing.
 
 Required tools on the host running the installer: `bash`, `curl`, `tar`,
 `mktemp`, `find`.
