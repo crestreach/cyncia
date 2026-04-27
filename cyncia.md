@@ -259,14 +259,11 @@ mcp-servers: "context7, memory"
 If a Copilot agent file already has its own `tools:` key **and** `mcp-servers:`,
 `sync-agents` exits with an error so you can merge them by hand.
 
-### Dependencies and limits
+### MCP-specific limits
 
-- Bash MCP scripts require `jq` (1.6+). The other sync steps do not.
 - Junie has no project-level MCP file in the documented version; `sync-mcp`
   prints the merged JSON to stdout so you can paste it under
   *Settings | Tools | AI Assistant | Model Context Protocol (MCP)*.
-- The MCP step is **skipped entirely** when `<source_root>/mcp-servers/` does
-  not exist; you do not need to create the directory if you have no MCP servers.
 
 If something does not show up after a sync, confirm the file path matches the
 [generated outputs table](#what-it-does), then re-run `sync-all.sh`.
@@ -382,6 +379,24 @@ Example prompts:
 3. Infer `-i` / `-o`, `--tools`, `--items`, and `--clean` from your request or information in AGENTS.md.
 4. Run the script, capture output, return a compact report (what was cleaned, what was written, and why).
 5. If anything is ambiguous (missing input root, conflicting tool names) — ask once instead of guessing.
+
+## Dependencies
+
+- **Bash 4+** (macOS / Linux / WSL / Git Bash) — required by `scripts/**/*.sh`
+  (the scripts use `[[ ]]`, `shopt -s nullglob`, associative arrays).
+- **PowerShell 5.1+** or **PowerShell 7+** (Windows / cross-platform) —
+  required by `scripts/**/*.ps1`.
+- **`jq` 1.6+** — required only by the MCP sync step; the Bash side calls
+  `require_jq` and exits with a clear message if it is missing. Install via
+  `brew install jq`, `apt-get install jq`, or `winget install jqlang.jq`.
+  - The MCP step is **skipped entirely** when `<source_root>/mcp-servers/`
+    does not exist, so projects without MCP servers do not need to create
+    the directory — and do not need `jq` at all.
+- **Git** — only for the install methods (submodule / subtree / sparse
+  clone) described under [Using this repo inside another Git project](#using-this-repo-inside-another-git-project).
+  Not needed at sync time.
+- Standard POSIX utilities (`sed`, `awk`, `grep`, `find`, `cp`, `mv`) —
+  already present on macOS, Linux, WSL, and Git Bash.
 
 ## Using this repo inside another Git project
 

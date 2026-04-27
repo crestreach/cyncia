@@ -45,6 +45,18 @@ Along the way it also rewrites **frontmatter** to each tool's native shape:
   `${env:NAME}` (Cursor), `${NAME}` / `${NAME:-}` (Claude),
   `${input:NAME}` + `inputs[]` entry (VS Code).
 
+## Dependencies
+
+- **Bash 4+** (macOS/Linux/WSL/Git Bash) — for `scripts/**/*.sh`.
+- **PowerShell 5.1+** or **PowerShell 7+** (Windows / cross-platform) — for `scripts/**/*.ps1`.
+- **`jq` 1.6+** — required only by the MCP sync (`sync-mcp.{sh,ps1}` and the
+  MCP step of `sync-all`); install with `brew install jq` /
+  `apt-get install jq` / `winget install jqlang.jq`.
+- **Git** — only for the install methods below (submodule / subtree /
+  sparse clone). Not needed at sync time.
+- Standard POSIX utilities (`sed`, `awk`, `grep`, `find`) — already present
+  on macOS, Linux, WSL, and Git Bash.
+
 ## Install
 
 Pick one — examples assume the default location **`.cyncia/`** at your project root.
