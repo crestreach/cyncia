@@ -67,8 +67,6 @@ if (Test-Path -LiteralPath $rulesDir -PathType Container) {
       [void]$sb.AppendLine("`n`n---`n")
       [void]$sb.AppendLine("## Project rules (from ``rules/``)")
       [void]$sb.AppendLine()
-      [void]$sb.AppendLine("The following rule files are imported with the same priority as this file (Claude Code memory imports):")
-      [void]$sb.AppendLine()
       foreach ($rf in $ruleFiles) {
         [void]$sb.AppendLine("@.claude/rules/$($rf.BaseName).md")
       }

@@ -77,7 +77,6 @@ esac
       if [[ ${#_kept[@]} -gt 0 ]]; then
         if [[ "$MODE" == "rule-files" ]]; then
           printf '\n\n---\n\n## Project rules (from `rules/`)\n\n'
-          printf 'The following rule files are imported with the same priority as this file (Claude Code memory imports):\n\n'
           while IFS= read -r f; do
             base="$(basename "$f" .md)"
             printf '@.claude/rules/%s.md\n' "$base"
