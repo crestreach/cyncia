@@ -243,8 +243,9 @@ function global:Get-CynciaConfValue {
   .DESCRIPTION
     Search order:
       1. $env:CYNCIA_CONF (if set and the file exists)
-      2. <scripts_parent>/cyncia.conf  (i.e. .cyncia/cyncia.conf when scripts
-         live at .cyncia/scripts/common/)
+      2. <scripts_parent>/../cyncia.conf  (i.e. .cyncia/cyncia.conf when
+         scripts live at .cyncia/scripts/common/, or <repo>/cyncia.conf
+         when scripts live at <repo>/scripts/common/)
     Recognized lines have the form "key: value". Comments (#...) and blank
     lines are ignored. Surrounding single/double quotes are stripped.
     When the key is missing, returns -Default (default '').

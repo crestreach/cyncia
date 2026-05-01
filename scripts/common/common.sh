@@ -260,10 +260,13 @@ mcp_csv_to_copilot_tools_list() {
 # read_cyncia_conf <key> [default]
 #   Read a scalar value from the cyncia config file. Search order:
 #     1. $CYNCIA_CONF (if set and the file exists)
-#     2. <scripts_parent>/cyncia.conf      (i.e. .cyncia/cyncia.conf in the
-#        canonical layout, since common.sh lives at .cyncia/scripts/common/)
-#     3. <scripts_parent>/../cyncia.conf   (when running from a repo clone with
-#        scripts/ at the top level — used by self-tests)
+#     2. $cyncia_dir/cyncia.conf, where $cyncia_dir is the parent of the
+#        directory holding common.sh's parent — i.e.
+#        <scripts_parent>/../cyncia.conf. This resolves to
+#        .cyncia/cyncia.conf in the canonical installed layout (common.sh at
+#        .cyncia/scripts/common/common.sh) and to <repo>/cyncia.conf in the
+#        repo-clone layout used by self-tests (common.sh at
+#        scripts/common/common.sh).
 #   The file is parsed as a tiny flat YAML: lines of the form
 #     key: value
 #   Comments (#…) and blank lines are ignored. Surrounding quotes are stripped.

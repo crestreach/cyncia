@@ -231,13 +231,77 @@ Describe 'Per-tool .ps1' {
     }
   }
 
-  It 'claude\sync-rules.ps1 is a no-op' {
+  It 'claude\sync-rules.ps1 is a no-op when claude_rules_mode is unset (default)' {
     $src = & $script:NewTestSourceFromFixture
     $out = & $script:NewTestOutputDir
     $r = Join-Path $script:RepoRoot 'scripts\claude\sync-rules.ps1'
     try {
+      Remove-Item Env:CYNCIA_CONF -ErrorAction SilentlyContinue
       { & $r -InputPath (Join-Path $src 'rules') -OutputPath $out -Clean } | Should -Not -Throw
+      (Test-Path -LiteralPath (Join-Path $out '.claude\rules')) | Should -BeFalse
     } finally {
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  It 'claude\sync-rules.ps1 emits per-rule files when claude_rules_mode is rule-files' {
+    $src = & $script:NewTestSourceFromFixture
+    $out = & $script:NewTestOutputDir
+    $r = Join-Path $script:RepoRoot 'scripts\claude\sync-rules.ps1'
+    $conf = Join-Path $out 'cyncia.conf'
+    try {
+      Set-Content -LiteralPath $conf -Value "claude_rules_mode: rule-files" -Encoding UTF8
+      $env:CYNCIA_CONF = $conf
+      & $r -InputPath (Join-Path $src 'rules') -OutputPath $out
+      (Test-Path -LiteralPath (Join-Path $out '.claude\rules\ra.md')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out '.claude\rules\rb.md')) | Should -BeTrue
+      $body = Get-Content -LiteralPath (Join-Path $out '.claude\rules\ra.md') -Raw
+      $body | Should -Not -Match '(?m)^---$'
+      $body | Should -Match '# `ra.md`'
+      $body | Should -Match '_Rule A_'
+      $body | Should -Match 'Rule A'
+    } finally {
+      Remove-Item Env:CYNCIA_CONF -ErrorAction SilentlyContinue
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  It 'claude\sync-agent-guidelines.ps1 emits @-imports in CLAUDE.md when mode is rule-files' {
+    $src = & $script:NewTestSourceFromFixture
+    $out = & $script:NewTestOutputDir
+    $r = Join-Path $script:RepoRoot 'scripts\claude\sync-agent-guidelines.ps1'
+    $conf = Join-Path $out 'cyncia.conf'
+    try {
+      Set-Content -LiteralPath $conf -Value "claude_rules_mode: rule-files" -Encoding UTF8
+      $env:CYNCIA_CONF = $conf
+      & $r -InputPath $src -OutputPath $out
+      $cl = Get-Content -LiteralPath (Join-Path $out 'CLAUDE.md') -Raw
+      $cl | Should -Match '(?m)^@\.claude/rules/ra\.md$'
+      $cl | Should -Match '(?m)^@\.claude/rules/rb\.md$'
+      # Bodies are NOT inlined in rule-files mode.
+      $cl | Should -Not -Match '### `ra.md`'
+    } finally {
+      Remove-Item Env:CYNCIA_CONF -ErrorAction SilentlyContinue
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  It 'claude\sync-rules.ps1 -Clean drops stale per-rule files in rule-files mode' {
+    $src = & $script:NewTestSourceFromFixture
+    $out = & $script:NewTestOutputDir
+    $r = Join-Path $script:RepoRoot 'scripts\claude\sync-rules.ps1'
+    $conf = Join-Path $out 'cyncia.conf'
+    try {
+      Set-Content -LiteralPath $conf -Value "claude_rules_mode: rule-files" -Encoding UTF8
+      $env:CYNCIA_CONF = $conf
+      $rulesOut = Join-Path $out '.claude\rules'
+      New-Item -ItemType Directory -Force -Path $rulesOut | Out-Null
+      Set-Content -LiteralPath (Join-Path $rulesOut 'legacy.md') -Value 'stale' -Encoding UTF8
+      & $r -InputPath (Join-Path $src 'rules') -OutputPath $out -Clean
+      (Test-Path -LiteralPath (Join-Path $rulesOut 'legacy.md')) | Should -BeFalse
+      (Test-Path -LiteralPath (Join-Path $rulesOut 'ra.md')) | Should -BeTrue
+    } finally {
+      Remove-Item Env:CYNCIA_CONF -ErrorAction SilentlyContinue
       Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
     }
   }

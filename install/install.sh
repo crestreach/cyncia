@@ -337,7 +337,7 @@ _conf_append_default() {
 }
 
 # Remove every line that declares <key>: ... (preserves blank lines and
-# comments around it; collapses runs of >2 blank lines).
+# comments around it).
 _conf_remove_key() {
   local file="$1" key="$2"
   local tmp="$file.tmp"

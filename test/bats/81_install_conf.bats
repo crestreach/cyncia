@@ -69,9 +69,10 @@ run_install() {
   run_install --no-bootstrap
   [ "$status" -eq 0 ]
 
-  # User edits the value.
-  sed -i 's/^claude_rules_mode:.*/claude_rules_mode: rule-files/' \
-    "$TEST_HOME/.cyncia/cyncia.conf"
+  # User edits the value (portable in-place edit, works on macOS/BSD sed).
+  awk '/^claude_rules_mode:/ { print "claude_rules_mode: rule-files"; next } { print }' \
+    "$TEST_HOME/.cyncia/cyncia.conf" > "$TEST_HOME/.cyncia/cyncia.conf.tmp"
+  mv "$TEST_HOME/.cyncia/cyncia.conf.tmp" "$TEST_HOME/.cyncia/cyncia.conf"
   cp "$TEST_HOME/.cyncia/cyncia.conf" "$TEST_HOME/conf.before"
 
   run_install --no-bootstrap

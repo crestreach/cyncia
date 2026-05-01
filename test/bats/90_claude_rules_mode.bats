@@ -3,7 +3,10 @@
 #
 # scripts/claude/sync-{agent-guidelines,rules}.sh look at:
 #   1. $CYNCIA_CONF if set, else
-#   2. <scripts_parent>/cyncia.conf
+#   2. .cyncia/cyncia.conf relative to the installed script location
+#      (resolved as the parent of common.sh's scripts directory; see
+#      read_cyncia_conf in scripts/common/common.sh).
+#
 # The default mode is "claude-md" (current behavior, rules merged into
 # CLAUDE.md). Mode "rule-files" emits one file per rule under
 # <output_root>/.claude/rules/<name>.md and replaces the merged section in
