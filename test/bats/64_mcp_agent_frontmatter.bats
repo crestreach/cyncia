@@ -62,6 +62,18 @@ teardown() {
   ! grep -q '^tools:'       "$TEST_OUT/.junie/agents/aside.md"
 }
 
+@test "codex sync-agents: writes TOML custom agent and strips generic mcp-servers" {
+  run bash "${REPO_ROOT}/scripts/codex/sync-agents.sh" -i "$TEST_SRC/agents" -o "$TEST_OUT"
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_OUT/.codex/agents/aside.toml" ]
+  grep -q '^name = "aside"$' "$TEST_OUT/.codex/agents/aside.toml"
+  grep -q '^description = "Side question agent\."$' "$TEST_OUT/.codex/agents/aside.toml"
+  grep -q '^developer_instructions = """$' "$TEST_OUT/.codex/agents/aside.toml"
+  grep -q '^Body\.$' "$TEST_OUT/.codex/agents/aside.toml"
+  ! grep -q 'mcp-servers' "$TEST_OUT/.codex/agents/aside.toml"
+  ! grep -q 'mcpServers' "$TEST_OUT/.codex/agents/aside.toml"
+}
+
 @test "copilot sync-agents: error when both mcp-servers and tools are present" {
   cat > "$TEST_SRC/agents/conflict.md" <<'MD'
 ---

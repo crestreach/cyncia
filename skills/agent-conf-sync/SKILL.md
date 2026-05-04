@@ -1,6 +1,6 @@
 ---
 name: agent-conf-sync
-description: Runs the cyncia batch script (`sync-all`) to regenerate Cursor, Claude Code, GitHub Copilot, VS Code, and JetBrains Junie configuration from a generic source tree. Use when the user asks to "sync agent config", "regenerate rules/skills/agents/mcp", "update .cursor / .claude / .github / .junie / .vscode from source", "run sync-all", or similar — so they don't have to assemble CLI flags or pick Windows vs Unix scripts themselves. The skill detects the OS, finds the script, and infers `-i` / `-o` / `--tools` / `--items` / `--clean` from the natural-language request.
+description: Runs the cyncia batch script (`sync-all`) to regenerate Cursor, Claude Code, GitHub Copilot, VS Code, JetBrains Junie, and Codex configuration from a generic source tree. Use when the user asks to "sync agent config", "regenerate rules/skills/agents/mcp", "update .cursor / .claude / .github / .junie / .vscode / .codex / .agents from source", "run sync-all", or similar — so they don't have to assemble CLI flags or pick Windows vs Unix scripts themselves. The skill detects the OS, finds the script, and infers `-i` / `-o` / `--tools` / `--items` / `--clean` from the natural-language request.
 ---
 
 # agent-conf-sync
@@ -29,8 +29,9 @@ For each selected tool, `sync-all` writes:
 | `copilot` | `.github/copilot-instructions.md`, `.github/{agents,skills,instructions}/` |
 | `vscode` | `.vscode/mcp.json` (also read by Copilot Chat in VS Code) |
 | `junie` | `.junie/AGENTS.md` (AGENTS + rules merged), `.junie/{agents,skills}/` |
+| `codex` | `AGENTS.md` (copy), `.codex/agents/*.toml`, `.agents/skills/`, `.codex/config.toml` |
 
-`sync-agent-guidelines` always emits the **full** `AGENTS.md` / `CLAUDE.md` / `.junie/AGENTS.md` — `--items` does not trim it. Claude and Junie have no per-rule files (rules are appended into the guidelines file).
+`sync-agent-guidelines` always emits the **full** `AGENTS.md` / `CLAUDE.md` / `.junie/AGENTS.md` — `--items` does not trim it. Claude and Junie have no per-rule files by default (rules are appended into the guidelines file). Codex does not generate files from Cyncia Markdown rules because Codex `.rules` files are Starlark command policy.
 
 This skill is only about **invocation and reporting**. For source-format details (rule frontmatter fields, secret-token translation, agent ↔ MCP linkage) see the upstream `README.md`.
 
@@ -40,9 +41,9 @@ Apply when the user wants to (re)generate tool-specific AI-assistant config from
 
 - "sync all", "run sync-all", "sync agent config", "sync the config"
 - "regenerate / update the rules / skills / agents / guidelines / mcp"
-- "rebuild `.cursor` / `.claude` / `.github` / `.junie`"
+- "rebuild `.cursor` / `.claude` / `.github` / `.junie` / `.codex` / `.agents`"
 - "sync MCP servers", "regenerate `.vscode/mcp.json`", "update Claude `.mcp.json`"
-- "sync for Cursor and Claude", "only Copilot", "skip Junie"
+- "sync for Cursor and Claude", "only Copilot", "only Codex", "skip Junie"
 - "clean sync", "prune stale files", "mirror deletions"
 
 Do **not** apply when the user is asking about the *format* of rules/skills/agents, or editing source files. For that, point them to `README.md`.
@@ -87,22 +88,23 @@ If nothing is stated, look at the workspace: presence of `AGENTS.md` + `agents/`
 
 ### Output root — `-o` / `-OutputRoot` (required)
 
-The project root where `.cursor/`, `.claude/`, `.github/`, `.junie/`, and the root `AGENTS.md` copy are written. Usually the consumer project root, or this repo's root when regenerating its own outputs.
+The project root where `.cursor/`, `.claude/`, `.github/`, `.junie/`, `.codex/`, `.agents/`, and the root `AGENTS.md` copy are written. Usually the consumer project root, or this repo's root when regenerating its own outputs.
 
-### `--tools` / `-Tools` (optional; default: all four)
+### `--tools` / `-Tools` (optional; default: all six)
 
-Comma-separated subset of `cursor,claude,copilot,vscode,junie` (case-insensitive, no spaces).
+Comma-separated subset of `cursor,claude,copilot,vscode,junie,codex` (case-insensitive, no spaces).
 
 | Phrase | Value |
 |--------|-------|
-| "all tools", "everything", no tool mentioned | omit flag (default = all five) |
+| "all tools", "everything", no tool mentioned | omit flag (default = all six) |
 | "only Cursor" | `cursor` |
 | "Cursor and Claude", "not Copilot, not Junie" | `cursor,claude` |
 | "skip Junie" | `cursor,claude,copilot,vscode` |
 | "only VS Code", "just MCP for VS Code" | `vscode` |
 | "Copilot with its MCP" | `copilot,vscode` (Copilot Chat in VS Code reads `.vscode/mcp.json`) |
+| "only Codex" | `codex` |
 
-Synonyms: **cursor** ← "Cursor"; **claude** ← "Claude", "Claude Code"; **copilot** ← "Copilot", "GitHub Copilot"; **vscode** ← "VS Code", "VSCode", "Visual Studio Code"; **junie** ← "Junie", "JetBrains".
+Synonyms: **cursor** ← "Cursor"; **claude** ← "Claude", "Claude Code"; **copilot** ← "Copilot", "GitHub Copilot"; **vscode** ← "VS Code", "VSCode", "Visual Studio Code"; **junie** ← "Junie", "JetBrains"; **codex** ← "Codex", "OpenAI Codex".
 
 ### `--items` / `-Items` (optional)
 
@@ -120,7 +122,7 @@ Single comma-separated list of **basenames without extension** (e.g. `delegate-t
 
 Set when the user asks to **remove stale outputs**, **prune**, **mirror source deletions**, **empty generated dirs first**, or says "clean sync".
 
-**Warning — data loss risk:** `--clean` empties the entire output directory for **every** sync step on **every** selected tool before writing: `.cursor/{agents,rules,skills}`, `.claude/{agents,skills}`, `.github/{agents,instructions,skills}`, `.junie/{agents,skills}`. Any hand-authored files in those dirs are deleted. This is especially risky for `.github/` since users often keep unrelated content there (workflows live in `.github/workflows/` — not wiped — but a user might have put manual instruction files in `.github/instructions/`). Flag this risk in your pre-run note whenever `-Clean` is inferred, and name the specific dirs that will be emptied based on the `--tools` selection.
+**Warning — data loss risk:** `--clean` empties the entire output directory for **every** sync step on **every** selected tool before writing: `.cursor/{agents,rules,skills}`, `.claude/{agents,skills}`, `.github/{agents,instructions,skills}`, `.junie/{agents,skills}`, `.codex/agents`, and `.agents/skills`. Any hand-authored files in those dirs are deleted. This is especially risky for `.github/` since users often keep unrelated content there (workflows live in `.github/workflows/` — not wiped — but a user might have put manual instruction files in `.github/instructions/`). Flag this risk in your pre-run note whenever `-Clean` is inferred, and name the specific dirs that will be emptied based on the `--tools` selection.
 
 ## Step 4: Validate and run
 
@@ -167,7 +169,7 @@ Reply with a **compact** summary, not the full log:
 
 1. **Command** — one line: OS/shell, script path, effective `-i`/`-o`/`--tools`/`--items`/`--clean`.
 2. **Deletions / clean** — list paths from log lines matching `cleaned` / `removed` / `Clean`. If `--clean` was not used, state that no clean step ran (overwrite in place only).
-3. **Generated / updated** — from lines with `->` (e.g. `cursor agent ->`, `copilot skill ->`) and `== tool ==` headers. Group by tool. Call out `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.junie/AGENTS.md` when they appear.
+3. **Generated / updated** — from lines with `->` (e.g. `cursor agent ->`, `copilot skill ->`) and `== tool ==` headers. Group by tool. Call out `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.junie/AGENTS.md`, `.codex/config.toml`, and `.codex/agents/*.toml` when they appear.
 4. **Basis** — one short sentence explaining what you inferred from the user's request.
 
 ## Edge cases

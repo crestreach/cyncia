@@ -1,4 +1,6 @@
 .claude/
+.agents/
+.codex/
 .cursor/
 .github/
 .junie/

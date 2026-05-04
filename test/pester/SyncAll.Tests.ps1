@@ -57,6 +57,21 @@ Describe 'sync-all.ps1' {
     }
   }
 
+  It 'with -Tools codex creates Codex outputs' {
+    $src = & $script:NewTestSourceFromFixture
+    $out = & $script:NewTestOutputDir
+    try {
+      & $script:SyncAllPs1 -InputRoot $src -OutputRoot $out -Tools codex
+      (Test-Path -LiteralPath (Join-Path $out '.codex\agents\one.toml')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out '.agents\skills\alpha\SKILL.md')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out 'AGENTS.md')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out '.cursor')) | Should -BeFalse
+      (Test-Path -LiteralPath (Join-Path $out '.github')) | Should -BeFalse
+    } finally {
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
   It 'missing required parameters does not hang (non-interactive pwsh errors)' {
     # Calling a script with missing Mandatory params can trigger an interactive prompt.
     # Run in a separate non-interactive process so we get a normal error/exit code.
@@ -197,6 +212,18 @@ Describe 'sync-all.ps1' {
       $j | Should -Match '## Project rules'
       $j | Should -Match '### `ra.md`'
       $j | Should -Match 'Rule A'
+    } finally {
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  It 'Codex sync-rules.ps1 is a no-op for Markdown rules' {
+    $src = & $script:NewTestSourceFromFixture
+    $out = & $script:NewTestOutputDir
+    $r = Join-Path $script:RepoRoot 'scripts\codex\sync-rules.ps1'
+    try {
+      & $r -InputPath (Join-Path $src 'rules') -OutputPath $out -Clean
+      (Test-Path -LiteralPath (Join-Path $out '.codex\rules')) | Should -BeFalse
     } finally {
       Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
     }

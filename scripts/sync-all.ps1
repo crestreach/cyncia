@@ -13,7 +13,7 @@
   Project root where tool-specific files are written. Each
   sync-agent-guidelines run copies AGENTS.md when input≠output.
 .PARAMETER Tools
-  Comma-separated list. Default: cursor,claude,copilot,vscode,junie
+  Comma-separated list. Default: cursor,claude,copilot,vscode,junie,codex
 .PARAMETER Items
   Comma-separated list forwarded to agents, skills, and rules (ignored by
   sync-agent-guidelines and by no-op rules scripts for Claude and Junie)
@@ -33,7 +33,7 @@ param(
   [string]$InputRoot,
   [Parameter(Mandatory)]
   [string]$OutputRoot,
-  [string]$Tools = 'cursor,claude,copilot,vscode,junie',
+  [string]$Tools = 'cursor,claude,copilot,vscode,junie,codex',
   [string]$Items = '',
   [switch]$Clean
 )

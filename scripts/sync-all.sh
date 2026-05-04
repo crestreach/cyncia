@@ -4,7 +4,7 @@
 # (all four are optional), and one output project root.
 #
 # Usage:
-#   sync-all.sh -i <source_root> -o <output_root> [--tools cursor,claude,copilot,vscode,junie] [--items a,b,c] [--clean]
+#   sync-all.sh -i <source_root> -o <output_root> [--tools cursor,claude,copilot,vscode,junie,codex] [--items a,b,c] [--clean]
 #
 #   <source_root>  Must contain AGENTS.md. May optionally contain any of:
 #                    agents/        (one *.md per agent)
@@ -25,7 +25,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TOOLS="cursor,claude,copilot,vscode,junie"
+TOOLS="cursor,claude,copilot,vscode,junie,codex"
 ITEMS=""
 INPUT_BASE=""
 OUTPUT_BASE=""

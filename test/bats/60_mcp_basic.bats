@@ -69,3 +69,15 @@ teardown() {
   [[ "$output" == *"httpbin"* ]]
   [ ! -d "$TEST_OUT/.junie" ] || [ -z "$(find "$TEST_OUT/.junie" -type f 2>/dev/null)" ]
 }
+
+@test "codex sync-mcp: writes .codex/config.toml with Codex MCP tables" {
+  run bash "${REPO_ROOT}/scripts/codex/sync-mcp.sh" -i "$TEST_SRC/mcp-servers" -o "$TEST_OUT"
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_OUT/.codex/config.toml" ]
+  grep -q '^\[mcp_servers\."context7"\]$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^command = "npx"$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^env_vars = \["CONTEXT7_API_KEY"\]$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^\[mcp_servers\."httpbin"\]$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^url = "https://httpbin.example/api"$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^bearer_token_env_var = "HTTPBIN_TOKEN"$' "$TEST_OUT/.codex/config.toml"
+}
