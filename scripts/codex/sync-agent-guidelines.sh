@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# Copy <source_root>/AGENTS.md to <output_root>/AGENTS.md for Codex.
+# Copy <source_root>/AGENTS.md to <output_root>/AGENTS.md for Codex and,
+# by default, write <output_root>/AGENTS.override.md with AGENTS.md plus rules.
 #
-# Codex discovers project guidance from AGENTS.md files, walking from the
-# project root down to the current working directory. This repo emits the root
-# project AGENTS.md only; nested AGENTS.md files remain hand-authored.
+# Codex discovers project guidance from AGENTS.override.md / AGENTS.md files,
+# walking from the project root down to the current working directory.
+# AGENTS.override.md is preferred over AGENTS.md in the same directory.
 #
 # Usage:
 #   sync-agent-guidelines.sh -i <source_root> -o <output_root> [--clean] [--help]
 #
 #   --clean  When set: if input and output roots differ, remove output root
-#            AGENTS.md before copy.
+#            AGENTS.md before copy; remove AGENTS.override.md before regenerate.
 
 COMMON="$(cd "$(dirname "${BASH_SOURCE[0]}")/../common" && pwd)/common.sh"
 source "$COMMON"
@@ -29,3 +30,62 @@ fi
 
 copy_agents_md_between_roots "$SRC_ROOT" "$OUTPUT_DIR"
 echo "codex agent-guidelines -> $OUTPUT_DIR/AGENTS.md"
+
+rules_override_enabled() {
+  local value
+  value="$(read_cyncia_conf codex_rules_to_agents_override true | tr '[:upper:]' '[:lower:]')"
+  case "$value" in
+    true|yes|y|1|on) return 0 ;;
+    false|no|n|0|off) return 1 ;;
+    *)
+      echo "codex agent-guidelines: unknown codex_rules_to_agents_override='$value' (valid: true, false); falling back to true" >&2
+      return 0
+      ;;
+  esac
+}
+
+OVERRIDE_DST="$OUTPUT_DIR/AGENTS.override.md"
+if ! rules_override_enabled; then
+  if [[ "$CLEAN" == "true" && -f "$OVERRIDE_DST" ]]; then
+    rm -f "$OVERRIDE_DST"
+    echo "codex agent-guidelines: removed $OVERRIDE_DST (--clean; codex_rules_to_agents_override=false)"
+  else
+    echo "codex agent-guidelines: skipped AGENTS.override.md (codex_rules_to_agents_override=false)"
+  fi
+  exit 0
+fi
+
+if [[ "$CLEAN" == "true" && -f "$OVERRIDE_DST" ]]; then
+  rm -f "$OVERRIDE_DST"
+  echo "codex agent-guidelines: removed $OVERRIDE_DST (--clean) before regenerate"
+fi
+
+RULES_DIR="$SRC_ROOT/rules"
+{
+  cat "$AGENTS_FILE"
+  if [[ -d "$RULES_DIR" ]]; then
+    shopt -s nullglob
+    _rf=("$RULES_DIR"/*.md)
+    _kept=()
+    for _f in "${_rf[@]+"${_rf[@]}"}"; do
+      _b="$(basename "$_f" .md)"
+      [[ "$_b" == "README" ]] && continue
+      _kept+=("$_f")
+    done
+    if [[ ${#_kept[@]} -gt 0 ]]; then
+      printf '\n\n---\n\n## Project rules (from `rules/`)\n\n'
+      while IFS= read -r f; do
+        base="$(basename "$f" .md)"
+        desc="$(extract_field "$f" description)"
+        printf '### `%s.md`\n\n' "$base"
+        if [[ -n "$desc" ]]; then
+          printf '_%s_\n\n' "$desc"
+        fi
+        strip_frontmatter "$f"
+        printf '\n\n'
+      done < <(printf '%s\n' "${_kept[@]}" | LC_ALL=C sort)
+    fi
+  fi
+} > "$OVERRIDE_DST"
+
+echo "codex agent-guidelines -> $OVERRIDE_DST (AGENTS.md + rules/*.md)"

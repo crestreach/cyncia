@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Codex rule emission for generic rules/<name>.md.
 #
-# No files are generated. Cyncia rules are Markdown instruction snippets with
-# applies-to/always-apply metadata. Codex's native .rules files are Starlark
-# command execution policy, so generating them from Markdown would be invalid.
+# No .codex/rules files are generated. Cyncia rules are Markdown instruction
+# snippets with applies-to/always-apply metadata. Codex's native .rules files
+# are Starlark command execution policy, so generating them from Markdown would
+# be invalid. Markdown rules are merged into AGENTS.override.md by
+# sync-agent-guidelines.sh when codex_rules_to_agents_override is enabled.
 # Put Codex command approval policy in .codex/rules/*.rules by hand.
 #
 # Usage:
@@ -19,4 +21,4 @@ parse_io_args "$@"
 to_abs_dir "$INPUT" >/dev/null
 to_abs_dir "$OUTPUT" >/dev/null
 
-echo "codex rules -> skipped (Cyncia Markdown rules do not map to Codex Starlark command-policy .rules files)"
+echo "codex rules -> skipped (.codex/rules are Starlark command policy; Markdown rules are handled by codex sync-agent-guidelines when enabled)"

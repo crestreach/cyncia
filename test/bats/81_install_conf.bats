@@ -55,11 +55,17 @@ run_install() {
   run env CYNCIA_REPO="" CYNCIA_REF="" bash "$INSTALL_SH" "$@"
 }
 
-@test "install: creates .cyncia/cyncia.conf with default claude_rules_mode" {
+@test "install: creates .cyncia/cyncia.conf with default properties" {
   run_install --no-bootstrap
   [ "$status" -eq 0 ]
   [ -f "$TEST_HOME/.cyncia/cyncia.conf" ]
   grep -Eq '^claude_rules_mode:[[:space:]]*claude-md[[:space:]]*$' \
+    "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -Eq '^codex_rules_to_agents_override:[[:space:]]*true[[:space:]]*$' \
+    "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -Eq '^codex_sync_mcp:[[:space:]]*true[[:space:]]*$' \
+    "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -Eq '^default_tools:[[:space:]]*cursor,claude,copilot,vscode,junie,codex[[:space:]]*$' \
     "$TEST_HOME/.cyncia/cyncia.conf"
   [[ "$output" == *"Creating"* ]]
   [[ "$output" == *"cyncia.conf"* ]]
@@ -92,6 +98,12 @@ EOF
   [ "$status" -eq 0 ]
   grep -Eq '^claude_rules_mode:[[:space:]]*claude-md' \
     "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -Eq '^codex_rules_to_agents_override:[[:space:]]*true' \
+    "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -Eq '^codex_sync_mcp:[[:space:]]*true' \
+    "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -Eq '^default_tools:[[:space:]]*cursor,claude,copilot,vscode,junie,codex' \
+    "$TEST_HOME/.cyncia/cyncia.conf"
   [[ "$output" == *"New cyncia.conf property"* ]]
   [[ "$output" == *"Add"* ]]
   [[ "$output" == *"-> yes"* ]]
@@ -106,6 +118,7 @@ EOF
   run_install --no-bootstrap
   [ "$status" -eq 0 ]
   ! grep -q '^claude_rules_mode:' "$TEST_HOME/.cyncia/cyncia.conf"
+  ! grep -q '^default_tools:' "$TEST_HOME/.cyncia/cyncia.conf"
   [[ "$output" == *"-> no"* ]]
 }
 
@@ -135,4 +148,5 @@ EOF
   [ "$status" -eq 0 ]
   ! grep -q '^deprecated_option:' "$TEST_HOME/.cyncia/cyncia.conf"
   grep -q '^claude_rules_mode:' "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -q '^default_tools:' "$TEST_HOME/.cyncia/cyncia.conf"
 }

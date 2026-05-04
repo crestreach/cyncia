@@ -65,9 +65,49 @@ Describe 'sync-all.ps1' {
       (Test-Path -LiteralPath (Join-Path $out '.codex\agents\one.toml')) | Should -BeTrue
       (Test-Path -LiteralPath (Join-Path $out '.agents\skills\alpha\SKILL.md')) | Should -BeTrue
       (Test-Path -LiteralPath (Join-Path $out 'AGENTS.md')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out 'AGENTS.override.md')) | Should -BeTrue
+      $override = Get-Content -LiteralPath (Join-Path $out 'AGENTS.override.md') -Raw
+      $override | Should -Match '## Project rules'
+      $override | Should -Match '# Rule A'
       (Test-Path -LiteralPath (Join-Path $out '.cursor')) | Should -BeFalse
       (Test-Path -LiteralPath (Join-Path $out '.github')) | Should -BeFalse
     } finally {
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  It 'uses default_tools from cyncia.conf when -Tools is omitted' {
+    $src = & $script:NewTestSourceFromFixture
+    $out = & $script:NewTestOutputDir
+    $oldConf = $env:CYNCIA_CONF
+    try {
+      $conf = Join-Path $out 'cyncia.conf'
+      Set-Content -LiteralPath $conf -Value 'default_tools: codex' -Encoding UTF8
+      $env:CYNCIA_CONF = $conf
+      & $script:SyncAllPs1 -InputRoot $src -OutputRoot $out
+      (Test-Path -LiteralPath (Join-Path $out '.codex\agents\one.toml')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out '.agents\skills\alpha\SKILL.md')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out '.cursor')) | Should -BeFalse
+      (Test-Path -LiteralPath (Join-Path $out '.github')) | Should -BeFalse
+    } finally {
+      if ($oldConf) { $env:CYNCIA_CONF = $oldConf } else { Remove-Item Env:CYNCIA_CONF -ErrorAction SilentlyContinue }
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  It 'respects codex_rules_to_agents_override false' {
+    $src = & $script:NewTestSourceFromFixture
+    $out = & $script:NewTestOutputDir
+    $oldConf = $env:CYNCIA_CONF
+    try {
+      $conf = Join-Path $out 'cyncia.conf'
+      Set-Content -LiteralPath $conf -Value 'codex_rules_to_agents_override: false' -Encoding UTF8
+      $env:CYNCIA_CONF = $conf
+      & $script:SyncAllPs1 -InputRoot $src -OutputRoot $out -Tools codex
+      (Test-Path -LiteralPath (Join-Path $out 'AGENTS.md')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out 'AGENTS.override.md')) | Should -BeFalse
+    } finally {
+      if ($oldConf) { $env:CYNCIA_CONF = $oldConf } else { Remove-Item Env:CYNCIA_CONF -ErrorAction SilentlyContinue }
       Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
     }
   }

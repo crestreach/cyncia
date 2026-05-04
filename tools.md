@@ -23,7 +23,7 @@ GitHub Copilot, VS Code, Junie, Codex) and the artifact types this repo syncs:
 | Claude Code | `CLAUDE.md` (root) | Writes from `<source_root>/AGENTS.md` + merged `rules/*.md` |
 | GitHub Copilot | `.github/copilot-instructions.md` | Copies from `<source_root>/AGENTS.md` |
 | Junie | `.junie/AGENTS.md` | Writes from `<source_root>/AGENTS.md` + merged `rules/*.md` |
-| Codex | `AGENTS.md` (root) | Copies `<source_root>/AGENTS.md` → `<output_root>/AGENTS.md` when roots differ |
+| Codex | `AGENTS.md` and `AGENTS.override.md` (root) | Copies `<source_root>/AGENTS.md` → `<output_root>/AGENTS.md` when roots differ; when `codex_rules_to_agents_override: true`, writes `AGENTS.override.md` from `AGENTS.md` + merged `rules/*.md` |
 
 ## Rules
 
@@ -33,15 +33,15 @@ GitHub Copilot, VS Code, Junie, Codex) and the artifact types this repo syncs:
 | GitHub Copilot | `.github/instructions/<name>.instructions.md` | Generates from `rules/<name>.md` (frontmatter → `applyTo` + body) |
 | Claude Code | *(none)* | Merges rule bodies into `CLAUDE.md` |
 | Junie | *(none)* | Merges rule bodies into `.junie/AGENTS.md` |
-| Codex | *(none)* | Not generated; Codex `.rules` files are Starlark command policy, not Markdown guidance |
+| Codex | *(no `.codex/rules` file)* | Codex `.rules` files are Starlark command policy, not Markdown guidance; generic rule bodies are merged into root `AGENTS.override.md` when `codex_rules_to_agents_override: true` |
 
 **Rule field mapping (as implemented by the scripts):**
 
 | Source (`rules/*.md`) | Cursor | Copilot | Claude / Junie merge | Codex |
 |---|---|---|---|---|
-| `description` | `description:` | — | shown as italic line | — |
-| `applies-to` | `globs:` | `applyTo:` (unless `always-apply`) | not enforced | — |
-| `always-apply: true` | `alwaysApply: true` | `applyTo: "**"` | not enforced | — |
+| `description` | `description:` | — | shown as italic line | shown as italic line in `AGENTS.override.md` |
+| `applies-to` | `globs:` | `applyTo:` (unless `always-apply`) | not enforced | not enforced |
+| `always-apply: true` | `alwaysApply: true` | `applyTo: "**"` | not enforced | not enforced |
 
 ## Skills
 
@@ -79,6 +79,9 @@ and are translated per tool.
 | Junie | *(no file)* | `mcpServers` | printed to stdout for manual paste; tokens passed through verbatim (user edits secrets in place) |
 | Codex | `.codex/config.toml` | `[mcp_servers.<name>]` | exact env secret values become `env_vars`; bearer auth headers become `bearer_token_env_var`; exact secret header values become `env_http_headers` |
 
-The MCP step runs only when `<source_root>/mcp-servers/` exists. `sync-mcp`
-always replaces the target file (no merge); `--clean` with an empty filter
-removes the target instead. `jq` is required for the Bash scripts.
+The MCP step runs only when `<source_root>/mcp-servers/` exists. For Cursor,
+Claude Code, and VS Code, `sync-mcp` replaces the target file; `--clean` with
+an empty filter removes the target instead. For Codex, `sync-mcp` updates only
+`mcp_servers` tables in `.codex/config.toml` and preserves unrelated Codex
+settings; `--clean` removes all existing `mcp_servers` tables before appending
+the selected generated servers. `jq` is required for the Bash scripts.

@@ -27,6 +27,7 @@ load test_helper
   [ -f "$TEST_OUT/CLAUDE.md" ]
   [ -f "$TEST_OUT/.github/copilot-instructions.md" ]
   [ -f "$TEST_OUT/.junie/AGENTS.md" ]
+  [ -f "$TEST_OUT/AGENTS.override.md" ]
   [ -f "$TEST_OUT/.codex/agents/one.toml" ]
   [ -f "$TEST_OUT/.agents/skills/alpha/SKILL.md" ]
 }
@@ -35,11 +36,39 @@ load test_helper
   run bash "$SYNC_ALL_SH" -i "$TEST_SRC" -o "$TEST_OUT" --tools codex
   [ "$status" -eq 0 ]
   [ -f "$TEST_OUT/AGENTS.md" ]
+  [ -f "$TEST_OUT/AGENTS.override.md" ]
+  grep -q '^## Project rules' "$TEST_OUT/AGENTS.override.md"
+  grep -q '^# Rule A' "$TEST_OUT/AGENTS.override.md"
   [ -f "$TEST_OUT/.codex/agents/one.toml" ]
   [ -f "$TEST_OUT/.agents/skills/alpha/SKILL.md" ]
   [ ! -d "$TEST_OUT/.cursor" ]
   [ ! -d "$TEST_OUT/.claude" ]
   [ ! -d "$TEST_OUT/.github" ]
+}
+
+@test "sync-all: default_tools from cyncia.conf controls omitted --tools" {
+  conf="$TEST_OUT/cyncia.conf"
+  echo 'default_tools: codex' > "$conf"
+  export CYNCIA_CONF="$conf"
+  run bash "$SYNC_ALL_SH" -i "$TEST_SRC" -o "$TEST_OUT"
+  unset CYNCIA_CONF
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_OUT/.codex/agents/one.toml" ]
+  [ -f "$TEST_OUT/.agents/skills/alpha/SKILL.md" ]
+  [ ! -d "$TEST_OUT/.cursor" ]
+  [ ! -d "$TEST_OUT/.claude" ]
+  [ ! -d "$TEST_OUT/.github" ]
+}
+
+@test "sync-all: codex_rules_to_agents_override false skips AGENTS.override.md" {
+  conf="$TEST_OUT/cyncia.conf"
+  echo 'codex_rules_to_agents_override: false' > "$conf"
+  export CYNCIA_CONF="$conf"
+  run bash "$SYNC_ALL_SH" -i "$TEST_SRC" -o "$TEST_OUT" --tools codex
+  unset CYNCIA_CONF
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_OUT/AGENTS.md" ]
+  [ ! -f "$TEST_OUT/AGENTS.override.md" ]
 }
 
 @test "sync-all: missing -o exits 2" {

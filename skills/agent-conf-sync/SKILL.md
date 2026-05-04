@@ -29,9 +29,9 @@ For each selected tool, `sync-all` writes:
 | `copilot` | `.github/copilot-instructions.md`, `.github/{agents,skills,instructions}/` |
 | `vscode` | `.vscode/mcp.json` (also read by Copilot Chat in VS Code) |
 | `junie` | `.junie/AGENTS.md` (AGENTS + rules merged), `.junie/{agents,skills}/` |
-| `codex` | `AGENTS.md` (copy), `.codex/agents/*.toml`, `.agents/skills/`, `.codex/config.toml` |
+| `codex` | `AGENTS.md` (copy), `AGENTS.override.md` when `codex_rules_to_agents_override=true`, `.codex/agents/*.toml`, `.agents/skills/`, `.codex/config.toml` `mcp_servers` tables when `codex_sync_mcp=true` |
 
-`sync-agent-guidelines` always emits the **full** `AGENTS.md` / `CLAUDE.md` / `.junie/AGENTS.md` — `--items` does not trim it. Claude and Junie have no per-rule files by default (rules are appended into the guidelines file). Codex does not generate files from Cyncia Markdown rules because Codex `.rules` files are Starlark command policy.
+`sync-agent-guidelines` always emits the **full** `AGENTS.md` / `CLAUDE.md` / `.junie/AGENTS.md` — `--items` does not trim it. Claude and Junie have no per-rule files by default (rules are appended into the guidelines file). Codex does not generate `.codex/rules` from Cyncia Markdown rules because Codex `.rules` files are Starlark command policy; by default, Codex Markdown rule bodies are merged into root `AGENTS.override.md` instead.
 
 This skill is only about **invocation and reporting**. For source-format details (rule frontmatter fields, secret-token translation, agent ↔ MCP linkage) see the upstream `README.md`.
 
@@ -40,7 +40,7 @@ This skill is only about **invocation and reporting**. For source-format details
 Apply when the user wants to (re)generate tool-specific AI-assistant config from a single generic source tree. Trigger phrases include:
 
 - "sync all", "run sync-all", "sync agent config", "sync the config"
-- "regenerate / update the rules / skills / agents / guidelines / mcp"
+- "regenerate / update the rules / skills / agents / guidelines / mcp / `AGENTS.override.md`"
 - "rebuild `.cursor` / `.claude` / `.github` / `.junie` / `.codex` / `.agents`"
 - "sync MCP servers", "regenerate `.vscode/mcp.json`", "update Claude `.mcp.json`"
 - "sync for Cursor and Claude", "only Copilot", "only Codex", "skip Junie"
@@ -88,18 +88,18 @@ If nothing is stated, look at the workspace: presence of `AGENTS.md` + `agents/`
 
 ### Output root — `-o` / `-OutputRoot` (required)
 
-The project root where `.cursor/`, `.claude/`, `.github/`, `.junie/`, `.codex/`, `.agents/`, and the root `AGENTS.md` copy are written. Usually the consumer project root, or this repo's root when regenerating its own outputs.
+The project root where `.cursor/`, `.claude/`, `.github/`, `.junie/`, `.codex/`, `.agents/`, the root `AGENTS.md` copy, and root `AGENTS.override.md` are written. Usually the consumer project root, or this repo's root when regenerating its own outputs.
 
-### `--tools` / `-Tools` (optional; default: all six)
+### `--tools` / `-Tools` (optional; default from config)
 
-Comma-separated subset of `cursor,claude,copilot,vscode,junie,codex` (case-insensitive, no spaces).
+Comma-separated subset of `cursor,claude,copilot,vscode,junie,codex` (case-insensitive, no spaces). If omitted, `sync-all` uses `default_tools` from `.cyncia/cyncia.conf`; if that property is missing, the built-in default is all six supported tools.
 
 | Phrase | Value |
 |--------|-------|
-| "all tools", "everything", no tool mentioned | omit flag (default = all six) |
+| "all tools", "everything", no tool mentioned | omit flag (uses `default_tools`; built-in default all six) |
 | "only Cursor" | `cursor` |
 | "Cursor and Claude", "not Copilot, not Junie" | `cursor,claude` |
-| "skip Junie" | `cursor,claude,copilot,vscode` |
+| "skip Junie" | `cursor,claude,copilot,vscode,codex` |
 | "only VS Code", "just MCP for VS Code" | `vscode` |
 | "Copilot with its MCP" | `copilot,vscode` (Copilot Chat in VS Code reads `.vscode/mcp.json`) |
 | "only Codex" | `codex` |
@@ -116,13 +116,13 @@ Single comma-separated list of **basenames without extension** (e.g. `delegate-t
 | "just `foo` and `bar`" | `foo,bar` |
 | "full sync", "all of them", no item mentioned | omit flag |
 
-**Caveat:** `--items` does not trim the guidelines merge. `sync-agent-guidelines` always emits the full `AGENTS.md` + merged rules for Claude/Junie. Mention this in the report if the user expected partial guidelines.
+**Caveat:** `--items` does not trim the guidelines merge. `sync-agent-guidelines` always emits the full `AGENTS.md` + merged rules for Claude/Junie/Codex. Mention this in the report if the user expected partial guidelines.
 
 ### `--clean` / `-Clean` (optional; default: off)
 
 Set when the user asks to **remove stale outputs**, **prune**, **mirror source deletions**, **empty generated dirs first**, or says "clean sync".
 
-**Warning — data loss risk:** `--clean` empties the entire output directory for **every** sync step on **every** selected tool before writing: `.cursor/{agents,rules,skills}`, `.claude/{agents,skills}`, `.github/{agents,instructions,skills}`, `.junie/{agents,skills}`, `.codex/agents`, and `.agents/skills`. Any hand-authored files in those dirs are deleted. This is especially risky for `.github/` since users often keep unrelated content there (workflows live in `.github/workflows/` — not wiped — but a user might have put manual instruction files in `.github/instructions/`). Flag this risk in your pre-run note whenever `-Clean` is inferred, and name the specific dirs that will be emptied based on the `--tools` selection.
+**Warning — data loss risk:** `--clean` empties the entire output directory for **every** sync step on **every** selected tool before writing: `.cursor/{agents,rules,skills}`, `.claude/{agents,skills}`, `.github/{agents,instructions,skills}`, `.junie/{agents,skills}`, `.codex/agents`, and `.agents/skills`. Any hand-authored files in those dirs are deleted. This is especially risky for `.github/` since users often keep unrelated content there (workflows live in `.github/workflows/` — not wiped — but a user might have put manual instruction files in `.github/instructions/`). Codex MCP clean is narrower: it removes/replaces only `mcp_servers` sections in `.codex/config.toml`, preserving unrelated Codex config. Flag clean risk in your pre-run note whenever `-Clean` is inferred, and name the specific dirs or Codex config sections affected by the `--tools` selection.
 
 ## Step 4: Validate and run
 
@@ -167,15 +167,15 @@ On non-zero exit, surface the error and suggest fixes (missing dirs, unknown too
 
 Reply with a **compact** summary, not the full log:
 
-1. **Command** — one line: OS/shell, script path, effective `-i`/`-o`/`--tools`/`--items`/`--clean`.
+1. **Command** — one line: OS/shell, script path, effective `-i`/`-o`/`--tools`/`--items`/`--clean`. If `--tools` was omitted and `default_tools` is visible, mention the configured default that was used.
 2. **Deletions / clean** — list paths from log lines matching `cleaned` / `removed` / `Clean`. If `--clean` was not used, state that no clean step ran (overwrite in place only).
-3. **Generated / updated** — from lines with `->` (e.g. `cursor agent ->`, `copilot skill ->`) and `== tool ==` headers. Group by tool. Call out `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.junie/AGENTS.md`, `.codex/config.toml`, and `.codex/agents/*.toml` when they appear.
+3. **Generated / updated** — from lines with `->` (e.g. `cursor agent ->`, `copilot skill ->`) and `== tool ==` headers. Group by tool. Call out `AGENTS.md`, `AGENTS.override.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.junie/AGENTS.md`, `.codex/config.toml`, and `.codex/agents/*.toml` when they appear.
 4. **Basis** — one short sentence explaining what you inferred from the user's request.
 
 ## Edge cases
 
 - **MCP-only sync:** likewise, call `scripts/<tool>/sync-mcp.{sh,ps1} -i <src>/mcp-servers -o <out>` directly. The Bash variants require `jq`.
 - **Rules-only sync:** `sync-all` has no such flag. Call the per-tool script directly (e.g. `scripts/cursor/sync-rules.sh -i <src>/rules -o <out>`).
-- **Submodule / monorepo:** always resolve real filesystem paths before running.
+- **Installed cyncia files / monorepo:** always resolve real filesystem paths before running.
 - **Input equals output:** allowed; scripts skip the redundant `AGENTS.md` copy.
 - **Git Bash on Windows:** prefer the `.sh` script with `bash`; only use `.ps1` when the session is clearly native PowerShell.

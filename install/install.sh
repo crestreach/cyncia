@@ -260,6 +260,9 @@ done <<<"$VERSION_TEXT"
 
 CYNCIA_CONF_SCHEMA=(
   "claude_rules_mode|claude-md|How rules/<name>.md is emitted for Claude Code: 'claude-md' merges rule bodies into CLAUDE.md (default); 'rule-files' writes one file per rule to .claude/rules/<name>.md and imports them from CLAUDE.md via @-imports so Claude loads them with the same priority as CLAUDE.md."
+  "codex_rules_to_agents_override|true|Whether Codex Markdown rule guidance is merged into AGENTS.override.md at the output root. Codex prefers AGENTS.override.md over AGENTS.md in the same directory, so this generated file contains AGENTS.md plus rules/*.md."
+  "codex_sync_mcp|true|Whether Codex MCP servers are synced into .codex/config.toml. When enabled, cyncia updates only the mcp_servers tables and preserves unrelated Codex config."
+  "default_tools|cursor,claude,copilot,vscode,junie,codex|Comma-separated tool list used by sync-all when --tools / -Tools is omitted."
 )
 
 CONF_PATH="$CYNCIA_DIR/cyncia.conf"

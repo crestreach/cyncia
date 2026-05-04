@@ -125,6 +125,68 @@ Describe 'sync-mcp.ps1 — basic translation' {
       Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
     }
   }
+
+  It 'codex: merges only mcp_servers into existing config.toml' {
+    $src = & $script:NewMcpSource
+    $out = & $script:NewOut
+    try {
+      $configDir = Join-Path $out '.codex'
+      New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+      @'
+model = "gpt-5"
+
+[mcp_servers."keep"]
+command = "keep-server"
+
+[mcp_servers."context7"]
+command = "old-server"
+'@ | Set-Content -LiteralPath (Join-Path $configDir 'config.toml') -Encoding UTF8
+
+      & (& $script:McpScript 'codex') -InputPath (Join-Path $src 'mcp-servers') -OutputPath $out -Items context7
+      $toml = Get-Content -LiteralPath (Join-Path $configDir 'config.toml') -Raw
+      $toml | Should -Match '(?m)^model = "gpt-5"$'
+      $toml | Should -Match '(?m)^\[mcp_servers\."keep"\]$'
+      $toml | Should -Match '(?m)^command = "keep-server"$'
+      $toml | Should -Match '(?m)^\[mcp_servers\."context7"\]$'
+      $toml | Should -Match '(?m)^command = "npx"$'
+      $toml | Should -Not -Match 'old-server'
+
+      & (& $script:McpScript 'codex') -InputPath (Join-Path $src 'mcp-servers') -OutputPath $out -Items context7 -Clean
+      $toml = Get-Content -LiteralPath (Join-Path $configDir 'config.toml') -Raw
+      $toml | Should -Match '(?m)^model = "gpt-5"$'
+      $toml | Should -Not -Match '(?m)^\[mcp_servers\."keep"\]$'
+      $toml | Should -Match '(?m)^\[mcp_servers\."context7"\]$'
+    } finally {
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  It 'codex: codex_sync_mcp false leaves config.toml untouched' {
+    $src = & $script:NewMcpSource
+    $out = & $script:NewOut
+    $oldConf = $env:CYNCIA_CONF
+    try {
+      $configDir = Join-Path $out '.codex'
+      New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+      $configPath = Join-Path $configDir 'config.toml'
+      @'
+model = "gpt-5"
+
+[mcp_servers."existing"]
+command = "existing-server"
+'@ | Set-Content -LiteralPath $configPath -Encoding UTF8
+      $before = Get-Content -LiteralPath $configPath -Raw
+      $conf = Join-Path $out 'cyncia.conf'
+      Set-Content -LiteralPath $conf -Value 'codex_sync_mcp: false' -Encoding UTF8
+      $env:CYNCIA_CONF = $conf
+
+      & (& $script:McpScript 'codex') -InputPath (Join-Path $src 'mcp-servers') -OutputPath $out -Clean
+      (Get-Content -LiteralPath $configPath -Raw) | Should -Be $before
+    } finally {
+      if ($oldConf) { $env:CYNCIA_CONF = $oldConf } else { Remove-Item Env:CYNCIA_CONF -ErrorAction SilentlyContinue }
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
 }
 
 Describe 'sync-mcp.ps1 — items and clean' {

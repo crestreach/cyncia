@@ -3,7 +3,9 @@
   No-op for generic Markdown rules.
 .DESCRIPTION
   Cyncia rules are Markdown instruction snippets. Codex native .rules files are
-  Starlark command execution policy, so this script intentionally emits no file.
+  Starlark command execution policy, so this script intentionally emits no
+  .codex/rules file. Markdown rules are merged into AGENTS.override.md by
+  sync-agent-guidelines.ps1 when codex_rules_to_agents_override is enabled.
 #>
 [CmdletBinding()]
 param(
@@ -18,4 +20,4 @@ $ErrorActionPreference = 'Stop'
 
 Resolve-AbsoluteDirectory -Path $InputPath | Out-Null
 Resolve-AbsoluteDirectory -Path $OutputPath | Out-Null
-Write-Host 'codex rules -> skipped (Cyncia Markdown rules do not map to Codex Starlark command-policy .rules files)'
+Write-Host 'codex rules -> skipped (.codex/rules are Starlark command policy; Markdown rules are handled by codex sync-agent-guidelines when enabled)'

@@ -13,7 +13,8 @@
   Project root where tool-specific files are written. Each
   sync-agent-guidelines run copies AGENTS.md when input≠output.
 .PARAMETER Tools
-  Comma-separated list. Default: cursor,claude,copilot,vscode,junie,codex
+  Comma-separated list. Defaults to the default_tools value in cyncia.conf,
+  or all supported tools when unset.
 .PARAMETER Items
   Comma-separated list forwarded to agents, skills, and rules (ignored by
   sync-agent-guidelines and by no-op rules scripts for Claude and Junie)
@@ -33,7 +34,7 @@ param(
   [string]$InputRoot,
   [Parameter(Mandatory)]
   [string]$OutputRoot,
-  [string]$Tools = 'cursor,claude,copilot,vscode,junie,codex',
+  [string]$Tools = '',
   [string]$Items = '',
   [switch]$Clean
 )
@@ -47,6 +48,10 @@ $outputBase = Resolve-AbsoluteDirectory -Path $OutputRoot
 $agentsFile = Join-Path $inputBase 'AGENTS.md'
 if (-not (Test-Path -LiteralPath $agentsFile -PathType Leaf)) {
   throw "Missing $agentsFile"
+}
+
+if (-not $Tools) {
+  $Tools = Get-CynciaConfValue -Key 'default_tools' -Default 'cursor,claude,copilot,vscode,junie,codex'
 }
 
 $itemArgs = @{}
