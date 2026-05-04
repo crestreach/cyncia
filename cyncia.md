@@ -5,8 +5,8 @@ Website: <https://www.cyncia.net>
 Tool-agnostic source of truth for AI coding-assistant configuration —
 **agents**, **skills**, **rules/guidelines**, a top-level **`AGENTS.md`**, and
 **MCP servers** — plus sync scripts that generate tool-specific files for
-**Cursor**, **Claude Code**, **GitHub Copilot**, **VS Code**, and
-**JetBrains Junie**.
+**Cursor**, **Claude Code**, **GitHub Copilot**, **VS Code**,
+**JetBrains Junie**, and **Codex**.
 
 **Why it exists.** Each of those tools looks in a **different place**, expects
 a **different file format**, and has its own **frontmatter keys** (and some
@@ -21,9 +21,10 @@ quickstart, see [`README.md`](README.md).
 
 ## Supported tools and versions
 
-This repo is based on **vendor-documented behavior** for Cursor, Claude Code, GitHub Copilot, VS Code, and JetBrains Junie.
+This repo is based on **vendor-documented behavior** for Cursor, Claude Code,
+GitHub Copilot, VS Code, JetBrains Junie, and Codex.
 
-- **Doc snapshot date:** **2026-04-24** (when the formats + behaviors in this README were last checked).
+- **Doc snapshot date:** **2026-05-04** (when the formats + behaviors in this README were last checked).
 - **If something stops working after an update:** re-check the relevant vendor docs and adjust the scripts/docs here.
 - **More detail:** pinned versions live in [`tool-versions.md`](tool-versions.md); a per-tool field reference lives in [`tools.md`](tools.md).
 
@@ -42,32 +43,37 @@ You author one source tree:
 
 Cyncia generates the per-tool files:
 
-| Source                  | Cursor                               | Claude Code                  | GitHub Copilot                                | VS Code             | JetBrains Junie                |
-| ----------------------- | ------------------------------------ | ---------------------------- | --------------------------------------------- | ------------------- | ------------------------------ |
-| `AGENTS.md`             | `AGENTS.md`                          | `CLAUDE.md`                  | `.github/copilot-instructions.md`             | —                   | `.junie/AGENTS.md`             |
-| `agents/<n>.md`         | `.cursor/agents/<n>.md`              | `.claude/agents/<n>.md`      | `.github/agents/<n>.md`                       | —                   | `.junie/agents/<n>.md`         |
-| `skills/<n>/`           | `.cursor/skills/<n>/`                | `.claude/skills/<n>/`        | `.github/skills/<n>/`                         | —                   | `.junie/skills/<n>/`           |
-| `rules/<n>.md`          | `.cursor/rules/<n>.mdc`              | merged into `CLAUDE.md` *or* `.claude/rules/<n>.md` (configurable via `cyncia.conf`) | `.github/instructions/<n>.instructions.md`    | —                   | merged into `.junie/AGENTS.md` |
-| `mcp-servers/<n>.json`  | `.cursor/mcp.json`                   | `.mcp.json`                  | (uses VS Code's `.vscode/mcp.json`)           | `.vscode/mcp.json`  | stdout snippet                 |
+| Source                  | Cursor                               | Claude Code                  | GitHub Copilot                                | VS Code             | JetBrains Junie                | Codex                         |
+| ----------------------- | ------------------------------------ | ---------------------------- | --------------------------------------------- | ------------------- | ------------------------------ | ----------------------------- |
+| `AGENTS.md`             | `AGENTS.md`                          | `CLAUDE.md`                  | `.github/copilot-instructions.md`             | —                   | `.junie/AGENTS.md`             | `AGENTS.md` (+ `AGENTS.override.md` when Codex rules are enabled) |
+| `agents/<n>.md`         | `.cursor/agents/<n>.md`              | `.claude/agents/<n>.md`      | `.github/agents/<n>.md`                       | —                   | `.junie/agents/<n>.md`         | `.codex/agents/<n>.toml`      |
+| `skills/<n>/`           | `.cursor/skills/<n>/`                | `.claude/skills/<n>/`        | `.github/skills/<n>/`                         | —                   | `.junie/skills/<n>/`           | `.agents/skills/<n>/`         |
+| `rules/<n>.md`          | `.cursor/rules/<n>.mdc`              | merged into `CLAUDE.md` *or* `.claude/rules/<n>.md` (configurable via `cyncia.conf`) | `.github/instructions/<n>.instructions.md`    | —                   | merged into `.junie/AGENTS.md` | merged into `AGENTS.override.md` (configurable) |
+| `mcp-servers/<n>.json`  | `.cursor/mcp.json`                   | `.mcp.json`                  | (uses VS Code's `.vscode/mcp.json`)           | `.vscode/mcp.json`  | stdout snippet                 | `.codex/config.toml`          |
 
 **How each tool picks the generated files up:**
 
 - **Guidelines** (`AGENTS.md` / `CLAUDE.md` / `.github/copilot-instructions.md` / `.junie/AGENTS.md`) are auto-loaded by the matching tool. Junie resolves the first of: `.junie/AGENTS.md` → root `AGENTS.md` → legacy `guidelines` (see [Guidelines and memory](https://junie.jetbrains.com/docs/guidelines-and-memory.html)).
-- **Rules** are auto-applied per `globs` / `applyTo` / `alwaysApply` (Cursor and Copilot). Claude and Junie merge rule bodies into their guidelines file.
+- **Rules** are auto-applied per `globs` / `applyTo` / `alwaysApply` (Cursor and Copilot). Claude and Junie merge rule bodies into their guidelines file. When rules are merged into a larger guideline file, Cyncia shifts imported ATX headings so the highest heading in each rule starts under the generated per-rule section; standalone rule files keep their original heading levels.
 - **Skills** are discovered automatically but **not all injected every time** — the agent selects skills by relevance (Claude can additionally gate by `paths`).
 - **Agents** are discovered, but **not run automatically**: they’re invoked (picker, `/command`, delegate, or `@name`).
+- **Codex** reads root/nested `AGENTS.md` and `AGENTS.override.md`, preferring
+  `AGENTS.override.md` over `AGENTS.md` when both exist in the same directory;
+  discovers repo skills from `.agents/skills`, discovers custom agents from
+  `.codex/agents/*.toml`, and reads project MCP from trusted
+  `.codex/config.toml`.
 
 Along the way, **frontmatter is rewritten** to each tool's native shape (full
 detail in the per-format sections below):
 
-| Generic key (where) | Cursor | Claude Code | GitHub Copilot | VS Code | Junie |
-|---|---|---|---|---|---|
-| `applies-to` (rule) | `globs:` | merged into `CLAUDE.md` | `applyTo:` | — | merged into `.junie/AGENTS.md` |
-| `always-apply` (rule) | `alwaysApply:` | — | (implied via `applyTo: "**"`) | — | — |
-| `applies-to` (skill) | stripped | `paths:` | stripped | — | stripped |
-| `mcp-servers` (agent) | stripped | `mcpServers: [...]` | `tools: ["a/*", ...]` | — | stripped |
-| `${secret:NAME}` (mcp) | `${env:NAME}` | `${NAME}` | — | `${input:NAME}` + `inputs[]` | snippet only |
-| `${secret:NAME?optional}` (mcp) | `${env:NAME}` | `${NAME:-}` | — | `${input:NAME}` (optional) | snippet only |
+| Generic key (where) | Cursor | Claude Code | GitHub Copilot | VS Code | Junie | Codex |
+|---|---|---|---|---|---|---|
+| `applies-to` (rule) | `globs:` | merged into `CLAUDE.md` | `applyTo:` | — | merged into `.junie/AGENTS.md` | — |
+| `always-apply` (rule) | `alwaysApply:` | — | (implied via `applyTo: "**"`) | — | — | — |
+| `applies-to` (skill) | stripped | `paths:` | stripped | — | stripped | stripped |
+| `mcp-servers` (agent) | stripped | `mcpServers: [...]` | `tools: ["a/*", ...]` | — | stripped | stripped |
+| `${secret:NAME}` (mcp) | `${env:NAME}` | `${NAME}` | — | `${input:NAME}` + `inputs[]` | snippet only | env forwarding / bearer env var when supported |
+| `${secret:NAME?optional}` (mcp) | `${env:NAME}` | `${NAME:-}` | — | `${input:NAME}` (optional) | snippet only | same as required when supported |
 
 Default project layout (after install + sync):
 
@@ -79,15 +85,18 @@ your-repo/
 │   ├── skills/
 │   ├── rules/
 │   └── mcp-servers/
-├── .cyncia/              # cyncia checkout (submodule / subtree / sparse clone)
+├── .cyncia/              # installed cyncia files
 │   ├── scripts/
 │   └── skills/
 ├── .cursor/              # generated
 ├── .claude/              # generated
 ├── .github/              # generated (instructions, skills, agents, copilot-instructions.md)
 ├── .junie/               # generated
+├── .codex/               # generated (agents + MCP server tables in config.toml)
+├── .agents/              # generated Codex skills
 ├── .vscode/mcp.json      # generated (when mcp-servers/ exists)
 ├── AGENTS.md             # generated (copy of .agent-config/AGENTS.md)
+├── AGENTS.override.md    # generated for Codex rules when codex-rules-mode=agents-override
 └── CLAUDE.md             # generated
 ```
 
@@ -137,8 +146,17 @@ always-apply: false              # optional; true = always on (overrides applies
 |----------------|------|--------|
 | Cursor | `.cursor/rules/<name>.mdc` | `description`, optional `globs` from `applies-to`, `alwaysApply` from `always-apply` (default `false` if not exactly `true`). |
 | GitHub Copilot | `.github/instructions/<name>.instructions.md` | `applyTo`: `**` if `always-apply: true`; else `applies-to` if set; else `**` (see resolution below). |
-| Claude Code | `.claude/rules/<name>.md` *(only when `claude_rules_mode: rule-files` in `cyncia.conf`)* | Default `claude-md` mode merges rule bodies into `CLAUDE.md` via `sync-agent-guidelines`. With `rule-files`, each rule is written to its own file (frontmatter stripped) and referenced from `CLAUDE.md` via Claude Code's `@.claude/rules/<name>.md` memory-import syntax, so it loads with the same priority as `CLAUDE.md`. |
+| Claude Code | `.claude/rules/<name>.md` *(only when `claude-rules-mode: rule-files` in `cyncia.conf`)* | Default `claude-md` mode merges rule bodies into `CLAUDE.md` via `sync-agent-guidelines`. With `rule-files`, each rule is written to its own file (frontmatter stripped) and referenced from `CLAUDE.md` via Claude Code's `@.claude/rules/<name>.md` memory-import syntax, so it loads with the same priority as `CLAUDE.md`. |
 | Junie | *(no per-rule file)* | Bodies are merged into `.junie/AGENTS.md` via `sync-agent-guidelines`. |
+| Codex | `AGENTS.override.md` *(when `codex-rules-mode: agents-override`, the default)* | Codex native `.rules` files are Starlark command execution policy, not Markdown instruction snippets. Cyncia does not generate `.codex/rules`; instead, generic Markdown rule bodies are merged into root `AGENTS.override.md`, which Codex prefers over `AGENTS.md` in the same directory. Keep Codex command policy under `.codex/rules/*.rules` by hand. |
+
+Merged guideline outputs wrap each rule body under a generated
+`### <rule>.md` section. To keep source rule headings from escaping that
+section, Cyncia normalizes imported ATX headings so the highest heading inside
+each rule body becomes `####` and deeper headings are shifted relative to it.
+Headings inside fenced code blocks are left unchanged. Native per-rule outputs
+such as `.cursor/rules/*.mdc`, `.github/instructions/*.instructions.md`, and
+`.claude/rules/*.md` in `rule-files` mode preserve the authored heading levels.
 
 **Copilot `applyTo` resolution** (implemented in `scripts/copilot/sync-rules.{sh,ps1}`):
 
@@ -161,7 +179,7 @@ its four modes (always / intelligent / glob / manual); see the
   On sync, it is:
   - **Claude Code:** renamed to `paths` (native per-skill glob gating; see
     [Claude skills doc](https://code.claude.com/docs/en/skills)).
-  - **Cursor, Copilot, Junie:** **removed** from the generated `SKILL.md`, because
+  - **Cursor, Copilot, Junie, Codex:** **removed** from the generated `SKILL.md`, because
     those products do not document an equivalent on skills. If you need hard
     file scoping in Cursor/Copilot, model it as a **rule** under `rules/` using
     `applies-to`.
@@ -174,7 +192,7 @@ to every tool’s copy; tools ignore keys they do not support.
 
 Optional. If `<source_root>/mcp-servers/` exists, `sync-all` will generate the
 appropriate MCP config file for every tool that supports a project-level config
-(Cursor, Claude Code, VS Code). `.vscode/mcp.json` belongs to **VS Code** —
+(Cursor, Claude Code, VS Code, Codex). `.vscode/mcp.json` belongs to **VS Code** —
 GitHub Copilot Chat in VS Code reads the same file but does not define the
 format, so it is written by the `vscode` tool, not by `copilot`. For Junie —
 which has no project-level MCP file as of the documented version — the snippet
@@ -230,12 +248,26 @@ JSON (env values, args, headers, urls, …):
 | Cursor | `.cursor/mcp.json` | `mcpServers` | `${env:NAME}` | `${env:NAME}` |
 | Claude Code | `.mcp.json` (project root) | `mcpServers` | `${NAME}` | `${NAME:-}` |
 | VS Code (incl. Copilot Chat in VS Code) | `.vscode/mcp.json` | `servers` + `inputs[]` | `${input:NAME}` (+ `inputs[]` entry, `password: true`) | `${input:NAME}` (+ `inputs[]` entry, `password: true`, `default: ""`) |
+| Codex | `.codex/config.toml` | `[mcp_servers.<name>]` | env forwarding / bearer env var when supported | same as required when supported |
 | Junie | *(stdout only)* | `mcpServers` | passed through verbatim | passed through verbatim |
 
-`sync-mcp` always **replaces** the target file (it does not merge with
-hand-edited entries). Re-running with `--items <subset>` produces a smaller
-file, not a partial one. With `--clean`, an empty filtered set **removes** the
-target file.
+Codex-specific MCP translation is constrained by Codex's documented TOML
+fields. A source env value exactly equal to `${secret:NAME}` (or optional form)
+becomes `env_vars = ["NAME"]` when the env key is also `NAME`. An HTTP
+`Authorization` header exactly equal to `Bearer ${secret:NAME}` becomes
+`bearer_token_env_var = "NAME"`; a header exactly equal to `${secret:NAME}`
+becomes an `env_http_headers` entry. Embedded secret interpolation in commands,
+args, URLs, or arbitrary string fragments is rejected for Codex because Codex
+does not document a compatible interpolation syntax there.
+
+For Cursor, Claude Code, and VS Code, `sync-mcp` **replaces** the target file
+(it does not merge with hand-edited entries). For Codex, Cyncia updates only
+the `mcp_servers` tables in `.codex/config.toml` and preserves unrelated Codex
+settings. Re-running Codex MCP sync with `--items <subset>` updates those
+selected generated server tables while leaving unrelated existing servers in
+place. With `--clean`, Cyncia removes all existing Codex `mcp_servers` tables
+before appending the selected generated servers, but still preserves unrelated
+Codex config.
 
 ### Agent ↔ MCP server linkage
 
@@ -257,6 +289,7 @@ mcp-servers: "context7, memory"
 | Claude Code | `mcpServers: [context7, memory]` |
 | GitHub Copilot | `tools: ["context7/*", "memory/*"]` |
 | Junie | `mcp-servers` is **stripped** |
+| Codex | `mcp-servers` is **stripped**; Codex custom agents inherit the parent session's MCP config unless the generated TOML is extended manually. |
 
 If a Copilot agent file already has its own `tools:` key **and** `mcp-servers:`,
 `sync-agents` exits with an error so you can merge them by hand.
@@ -289,7 +322,9 @@ scripts/
 │   └── sync-mcp.{sh,ps1}
 ├── claude/        ...       # same five pairs
 ├── copilot/       ...
+├── vscode/        ...
 ├── junie/         ...
+├── codex/         ...
 ├── sync-all.sh              # convenience: run every tool's scripts
 └── sync-all.ps1
 ```
@@ -308,7 +343,8 @@ Per-tool scripts:
   next to the new outputs. **Warning:** each per-tool script empties its entire
   output directory before writing — `.cursor/{agents,rules,skills}`,
   `.claude/{agents,skills}`, `.github/{agents,instructions,skills}`, and
-  `.junie/{agents,skills}`. Any hand-authored files placed there will be lost.
+  `.junie/{agents,skills}`, plus Codex `.codex/agents` and `.agents/skills`.
+  Any hand-authored files placed there will be lost.
   This is especially easy to overlook under `.github/` (for Copilot), where
   unrelated content is commonly kept. Keep only sync-generated files in these
   directories, or do not use `--clean` for the affected step.
@@ -316,20 +352,25 @@ Per-tool scripts:
 
 `sync-all` adds:
 
-- `--tools cursor,claude,copilot,junie` / `-Tools ...` (default: all four)
+- `--tools cursor,claude,copilot,vscode,junie,codex` / `-Tools ...`; when omitted,
+  `sync-all` uses `default-tools` from `.cyncia/cyncia.conf` (built-in default:
+  all six supported tools).
 - `--clean` / `-Clean` is forwarded to **every** per-tool script in the run (same
   semantics as above).
 
-The Claude and Junie **`sync-rules`** scripts are no-ops (rules are merged in
-`sync-agent-guidelines`); they accept `--clean` for a uniform CLI but perform
-no deletions.
+The Claude and Junie **`sync-rules`** scripts are no-ops in their default modes
+(rules are merged in `sync-agent-guidelines`). Codex **`sync-rules`** is also a
+no-op because Codex `.rules` files are command policy, not Markdown guidance;
+Codex Markdown rule guidance is handled by `sync-agent-guidelines` when
+`codex-rules-mode` is `agents-override`. They accept `--clean` for a
+uniform CLI but perform no deletions.
 
 ### Examples — macOS / Linux
 
 `sync-all` needs a **source root** containing `AGENTS.md` (and optionally any of `agents/`, `rules/`, `skills/`, `mcp-servers/`), and an **output root** (usually your project root).
 
 ```bash
-# Regenerate everything for every tool (source tree → output root)
+# Regenerate everything for the configured default tool list (source tree → output root)
 scripts/sync-all.sh -i "/path/to/your/source-root" -o "$PWD"
 
 # Same, using the examples/ tree instead
@@ -377,7 +418,7 @@ Example prompts:
 **Inference rules the skill follows** (see [`skills/agent-conf-sync/SKILL.md`](skills/agent-conf-sync/SKILL.md) for the authoritative version):
 
 1. Detect the platform and pick `sync-all.sh` (macOS/Linux/Git Bash) or `sync-all.ps1` (Windows PowerShell).
-2. Locate the script root (workspace root, a submodule path, or a search under the workspace).
+2. Locate the installed cyncia script root (workspace root, `.cyncia/`, or a search under the workspace).
 3. Infer `-i` / `-o`, `--tools`, `--items`, and `--clean` from your request or information in AGENTS.md.
 4. Run the script, capture output, return a compact report (what was cleaned, what was written, and why).
 5. If anything is ambiguous (missing input root, conflicting tool names) — ask once instead of guessing.
@@ -450,7 +491,7 @@ In order, the script:
 | Flag | Default | Effect |
 |---|---|---|
 | `--config-dir PATH` | `.agent-config` | Authoring source tree. |
-| `--cyncia-dir PATH` | `.cyncia` | Where the cyncia checkout lives. |
+| `--cyncia-dir PATH` | `.cyncia` | Where installed cyncia files live. |
 | `--ref REF` | `main` | Git branch or tag to download. Tags drop a leading `v` in the GitHub tarball prefix; the script handles that. |
 | `--repo OWNER/NAME` | `crestreach/cyncia` | GitHub repo to download from. |
 | `--bootstrap` | — | Answer **yes** to every prompt without asking. This is also the default behavior when there is no TTY (e.g. piped from `curl`); use this flag to be explicit in scripts. |
@@ -501,7 +542,7 @@ curl -fsSL https://raw.githubusercontent.com/yourorg/cyncia/feature-x/install/in
   | bash -s -- --repo yourorg/cyncia --ref feature-x
 ```
 
-Update an existing checkout to the latest `main`:
+Update installed cyncia files to the latest `main`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/crestreach/cyncia/main/install/install.sh | bash
@@ -550,14 +591,14 @@ root `AGENTS.md` (or its source equivalent — e.g. `.agent-config/AGENTS.md`
 if you author guidelines from `.agent-config/`, then re-run `sync-all`).
 
 > **Before pasting:** if you've changed the default locations — `.cyncia/`
-> for the cyncia checkout and `.agent-config/` for the authoring root —
+> for installed cyncia files and `.agent-config/` for the authoring root —
 > update every path in the snippet (`.cyncia/…`, `.agent-config/…`) to
 > match your project's layout. Otherwise leave it as-is.
 
 ```markdown
 ## Agent configuration management (cyncia)
 
-This repo manages all of its AI-assistant configuration — guidelines (`AGENTS.md`), rules, skills, agents, and MCP servers — through [`.cyncia`](./.cyncia). The single generic source tree lives in [`.agent-config/`](./.agent-config); per-tool layouts (`.cursor/`, `.claude/`, `.github/`, `.junie/`, `.vscode/`, root `AGENTS.md`, `CLAUDE.md`) are generated from it. The `agent-conf-sync` skill invokes the sync via `.cyncia/scripts/sync-all.sh` (POSIX) or `.cyncia/scripts/sync-all.ps1` (Windows).
+This repo manages all of its AI-assistant configuration — guidelines (`AGENTS.md`), rules, skills, agents, and MCP servers — through installed cyncia files under [`.cyncia`](./.cyncia). The single generic source tree lives in [`.agent-config/`](./.agent-config); per-tool layouts (`.cursor/`, `.claude/`, `.github/`, `.junie/`, `.vscode/`, `.codex/`, `.agents/`, root `AGENTS.md`, `AGENTS.override.md`, `CLAUDE.md`) are generated from it. The `agent-conf-sync` skill invokes the sync via `.cyncia/scripts/sync-all.sh` (POSIX) or `.cyncia/scripts/sync-all.ps1` (Windows).
 
 When asked to **create or update** any of (or if any of the following gets updated):
 
@@ -567,12 +608,13 @@ When asked to **create or update** any of (or if any of the following gets updat
 - a subagent
 - an MCP server entry
 
-read [`.cyncia/README.md`](./.cyncia/README.md) for the source-tree format (frontmatter fields, secret-token translation, agent ↔ MCP linkage), author the file under the appropriate folder of `.agent-config/` (`.agent-config/{rules,skills,agents,mcp-servers}/`), and then re-run the sync (skill `agent-conf-sync`) to fan it out to the per-tool directories. Do not hand-edit the generated `.cursor/`, `.claude/`, `.github/`, `.junie/`, `.vscode/` files — they are overwritten on the next sync.
+read [`.cyncia/README.md`](./.cyncia/README.md) for the source-tree format (frontmatter fields, secret-token translation, agent ↔ MCP linkage), author the file under the appropriate folder of `.agent-config/` (`.agent-config/{rules,skills,agents,mcp-servers}/`), and then re-run the sync (skill `agent-conf-sync`) to fan it out to the per-tool directories. Do not hand-edit generated `.cursor/`, `.claude/`, `.github/`, `.junie/`, `.vscode/`, `.codex/agents/`, `.agents/skills/`, root `AGENTS.md`, root `AGENTS.override.md`, or `CLAUDE.md` files — they are overwritten on the next sync.
 ```
 
 Then either **commit the generated** `.cursor/`, `.github/`, `.claude/`,
-`.junie/`, `AGENTS.md`, and `CLAUDE.md` so the team gets them without running
-scripts, **or** document that everyone must run `sync-all` after pulling.
+`.junie/`, `.vscode/`, `.codex/`, `.agents/`, `AGENTS.md`, and `CLAUDE.md` so
+the team gets them without running scripts, **or** document that everyone must
+run `sync-all` after pulling.
 
 ## Configuration (`.cyncia/cyncia.conf`)
 
@@ -601,7 +643,10 @@ Currently supported properties:
 
 | Key | Default | Values | Effect |
 |---|---|---|---|
-| `claude_rules_mode` | `claude-md` | `claude-md`, `rule-files` | How `rules/<n>.md` is emitted for Claude Code. `claude-md` merges every rule body into `CLAUDE.md` (the previous behavior; `scripts/claude/sync-rules.{sh,ps1}` is a no-op). `rule-files` writes each rule to `.claude/rules/<n>.md` (frontmatter stripped) and references it from `CLAUDE.md` via Claude Code's `@`-import syntax (`@.claude/rules/<n>.md`), so each rule is loaded by Claude Code with the same priority as `CLAUDE.md`. Unknown values fall back to `claude-md` with a warning. |
+| `claude-rules-mode` | `claude-md` | `claude-md`, `rule-files` | How `rules/<n>.md` is emitted for Claude Code. `claude-md` merges every rule body into `CLAUDE.md` (the previous behavior; `scripts/claude/sync-rules.{sh,ps1}` is a no-op). `rule-files` writes each rule to `.claude/rules/<n>.md` (frontmatter stripped) and references it from `CLAUDE.md` via Claude Code's `@`-import syntax (`@.claude/rules/<n>.md`), so each rule is loaded by Claude Code with the same priority as `CLAUDE.md`. Unknown values fall back to `claude-md` with a warning. |
+| `codex-rules-mode` | `agents-override` | `agents-override`, `ignore` | How Codex Markdown rule guidance is handled. `agents-override` merges root `AGENTS.md` plus `rules/*.md` into root `AGENTS.override.md`, which Codex prefers over `AGENTS.md` in the same directory. `ignore` emits no Markdown rules for Codex. `.codex/AGENTS.override.md` is not a documented project-doc location. |
+| `codex-sync-mcp` | `true` | `true`, `false` | Whether Codex MCP servers are synced into `.codex/config.toml`. When enabled, Cyncia updates only `mcp_servers` tables and preserves unrelated Codex config. With `--clean`, existing `mcp_servers` are replaced by the selected generated servers; without `--clean`, selected generated servers are added/updated and unrelated existing servers stay. |
+| `default-tools` | `cursor,claude,copilot,vscode,junie,codex` | comma-separated tools | Tool list used by `sync-all` when `--tools` / `-Tools` is omitted. |
 
 Example:
 
@@ -610,7 +655,18 @@ Example:
 # bodies into CLAUDE.md (default); 'rule-files' writes one file per rule to
 # .claude/rules/<name>.md and imports them from CLAUDE.md via @-imports so
 # Claude loads them with the same priority as CLAUDE.md.
-claude_rules_mode: claude-md
+claude-rules-mode: claude-md
+
+# How rules/<name>.md bodies are handled for Codex: 'agents-override' merges
+# them into root AGENTS.override.md; 'ignore' emits no Markdown rules for Codex.
+codex-rules-mode: agents-override
+
+# Whether mcp-servers/<name>.json is synced into .codex/config.toml. When true,
+# Cyncia updates only mcp_servers tables and preserves unrelated Codex config.
+codex-sync-mcp: true
+
+# Tool list used by sync-all when --tools / -Tools is omitted.
+default-tools: cursor,claude,copilot,vscode,junie,codex
 ```
 
 ## License

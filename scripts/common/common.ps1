@@ -90,6 +90,87 @@ function global:Get-MarkdownBody {
   return $lines[($end + 1)..($lines.Count - 1)]
 }
 
+function global:ConvertTo-NormalizedMarkdownHeadings {
+  param(
+    [string[]]$Lines,
+    [int]$TargetLevel = 4
+  )
+
+  function Get-FenceMarker {
+    param([string]$Line)
+    if ($Line -match '^( {0,3})(`{3,}|~{3,})') { return $Matches[2] }
+    return ''
+  }
+
+  function Get-HeadingLevel {
+    param([string]$Line)
+    if ($Line -match '^( {0,3})(#{1,6})(?=\s|$)') { return $Matches[2].Length }
+    return 0
+  }
+
+  $minLevel = 0
+  $inFence = $false
+  $fenceChar = ''
+  $fenceLen = 0
+  foreach ($line in $Lines) {
+    $marker = Get-FenceMarker -Line $line
+    if ($inFence) {
+      if ($marker -and $marker[0] -eq $fenceChar -and $marker.Length -ge $fenceLen) { $inFence = $false }
+      continue
+    }
+    if ($marker) {
+      $inFence = $true
+      $fenceChar = $marker[0]
+      $fenceLen = $marker.Length
+      continue
+    }
+    $level = Get-HeadingLevel -Line $line
+    if ($level -gt 0 -and ($minLevel -eq 0 -or $level -lt $minLevel)) { $minLevel = $level }
+  }
+
+  if ($minLevel -eq 0) { return $Lines }
+  $offset = $TargetLevel - $minLevel
+  $out = New-Object System.Collections.Generic.List[string]
+  $inFence = $false
+  $fenceChar = ''
+  $fenceLen = 0
+  foreach ($line in $Lines) {
+    $marker = Get-FenceMarker -Line $line
+    if ($inFence) {
+      $out.Add($line)
+      if ($marker -and $marker[0] -eq $fenceChar -and $marker.Length -ge $fenceLen) { $inFence = $false }
+      continue
+    }
+    if ($marker) {
+      $inFence = $true
+      $fenceChar = $marker[0]
+      $fenceLen = $marker.Length
+      $out.Add($line)
+      continue
+    }
+    if ($line -match '^( {0,3})(#{1,6})(?=\s|$)') {
+      $newLevel = $Matches[2].Length + $offset
+      if ($newLevel -lt 1) { $newLevel = 1 }
+      if ($newLevel -gt 6) { $newLevel = 6 }
+      $hashes = '#' * $newLevel
+      $rest = $line.Substring($Matches[1].Length + $Matches[2].Length)
+      $rest = [regex]::Replace($rest, '\s+#{1,}\s*$', ' ' + $hashes)
+      $out.Add($Matches[1] + $hashes + $rest)
+    } else {
+      $out.Add($line)
+    }
+  }
+  return $out.ToArray()
+}
+
+function global:Get-MarkdownBodyForEmbeddedSection {
+  param(
+    [Parameter(Mandatory=$true)][string]$Path,
+    [int]$TargetHeadingLevel = 4
+  )
+  return ConvertTo-NormalizedMarkdownHeadings -Lines (Get-MarkdownBody -Path $Path) -TargetLevel $TargetHeadingLevel
+}
+
 function global:Get-FrontmatterField {
   param(
     [Parameter(Mandatory=$true)][string]$Path,

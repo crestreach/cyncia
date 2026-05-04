@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Claude Code rule emission for `rules/<name>.md`.
 #
-# Behavior depends on the `claude_rules_mode` key in <cyncia-dir>/cyncia.conf
+# Behavior depends on the `claude-rules-mode` key in <cyncia-dir>/cyncia.conf
 # (default: `claude-md`):
 #
 #   claude-md    No-op. Rule bodies are merged into CLAUDE.md by
@@ -31,11 +31,11 @@ parse_io_args "$@"
 INPUT_DIR="$(to_abs_dir "$INPUT")"
 OUTPUT_DIR="$(to_abs_dir "$OUTPUT")"
 
-MODE="$(read_cyncia_conf claude_rules_mode claude-md)"
+MODE="$(read_cyncia_conf claude-rules-mode claude-md)"
 case "$MODE" in
   claude-md|rule-files) ;;
   *)
-    echo "claude rules: unknown claude_rules_mode='$MODE' (valid: claude-md, rule-files); falling back to claude-md" >&2
+    echo "claude rules: unknown claude-rules-mode='$MODE' (valid: claude-md, rule-files); falling back to claude-md" >&2
     MODE="claude-md"
     ;;
 esac

@@ -1,9 +1,11 @@
 .claude/
+.agents/
+.codex/
 .cursor/
 .github/
 .junie/
 .mcp.json
 .vscode/
-examples/.vscode/
+AGENTS.override.md
 CLAUDE.md
 _notes.md

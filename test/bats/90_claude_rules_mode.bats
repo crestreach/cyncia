@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Tests for the claude_rules_mode switch read from cyncia.conf.
+# Tests for the claude-rules-mode switch read from cyncia.conf.
 #
 # scripts/claude/sync-{agent-guidelines,rules}.sh look at:
 #   1. $CYNCIA_CONF if set, else
@@ -24,7 +24,7 @@ CLAUDE_RULES_SH="${REPO_ROOT}/scripts/claude/sync-rules.sh"
   [ -f "$TEST_OUT/CLAUDE.md" ]
   # Body of ra.md is inlined.
   grep -q '### `ra.md`' "$TEST_OUT/CLAUDE.md"
-  grep -q '# Rule A' "$TEST_OUT/CLAUDE.md"
+  grep -q '^#### Rule A' "$TEST_OUT/CLAUDE.md"
   # No @-imports in default mode.
   ! grep -q '^@\.claude/rules/' "$TEST_OUT/CLAUDE.md"
 
@@ -36,7 +36,7 @@ CLAUDE_RULES_SH="${REPO_ROOT}/scripts/claude/sync-rules.sh"
 
 @test "claude rules: rule-files mode emits per-rule files and @-imports" {
   conf="$TEST_OUT/cyncia.conf"
-  echo "claude_rules_mode: rule-files" > "$conf"
+  echo "claude-rules-mode: rule-files" > "$conf"
   export CYNCIA_CONF="$conf"
 
   run bash "$CLAUDE_GL_SH" -i "$TEST_SRC" -o "$TEST_OUT"
@@ -62,7 +62,7 @@ CLAUDE_RULES_SH="${REPO_ROOT}/scripts/claude/sync-rules.sh"
 
 @test "claude rules: rule-files mode with --clean removes stale per-rule files" {
   conf="$TEST_OUT/cyncia.conf"
-  echo "claude_rules_mode: rule-files" > "$conf"
+  echo "claude-rules-mode: rule-files" > "$conf"
   export CYNCIA_CONF="$conf"
 
   mkdir -p "$TEST_OUT/.claude/rules"
@@ -76,19 +76,19 @@ CLAUDE_RULES_SH="${REPO_ROOT}/scripts/claude/sync-rules.sh"
 
 @test "claude rules: invalid mode falls back to claude-md with warning" {
   conf="$TEST_OUT/cyncia.conf"
-  echo "claude_rules_mode: bogus" > "$conf"
+  echo "claude-rules-mode: bogus" > "$conf"
   export CYNCIA_CONF="$conf"
 
   run bash "$CLAUDE_GL_SH" -i "$TEST_SRC" -o "$TEST_OUT"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"unknown claude_rules_mode='bogus'"* ]]
+  [[ "$output" == *"unknown claude-rules-mode='bogus'"* ]]
   grep -q '### `ra.md`' "$TEST_OUT/CLAUDE.md"
   ! grep -q '^@\.claude/rules/' "$TEST_OUT/CLAUDE.md"
 }
 
 @test "sync-all: rule-files mode produces both CLAUDE.md @-imports and per-rule files" {
   conf="$TEST_OUT/cyncia.conf"
-  echo "claude_rules_mode: rule-files" > "$conf"
+  echo "claude-rules-mode: rule-files" > "$conf"
   export CYNCIA_CONF="$conf"
 
   run bash "$SYNC_ALL_SH" -i "$TEST_SRC" -o "$TEST_OUT" --tools claude

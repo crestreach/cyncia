@@ -69,3 +69,61 @@ teardown() {
   [[ "$output" == *"httpbin"* ]]
   [ ! -d "$TEST_OUT/.junie" ] || [ -z "$(find "$TEST_OUT/.junie" -type f 2>/dev/null)" ]
 }
+
+@test "codex sync-mcp: writes .codex/config.toml with Codex MCP tables" {
+  run bash "${REPO_ROOT}/scripts/codex/sync-mcp.sh" -i "$TEST_SRC/mcp-servers" -o "$TEST_OUT"
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_OUT/.codex/config.toml" ]
+  grep -q '^\[mcp_servers\."context7"\]$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^command = "npx"$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^env_vars = \["CONTEXT7_API_KEY"\]$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^\[mcp_servers\."httpbin"\]$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^url = "https://httpbin.example/api"$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^bearer_token_env_var = "HTTPBIN_TOKEN"$' "$TEST_OUT/.codex/config.toml"
+}
+
+@test "codex sync-mcp: merges only mcp_servers into existing config.toml" {
+  mkdir -p "$TEST_OUT/.codex"
+  cat > "$TEST_OUT/.codex/config.toml" <<'TOML'
+model = "gpt-5"
+
+[mcp_servers."keep"]
+command = "keep-server"
+
+[mcp_servers."context7"]
+command = "old-server"
+TOML
+
+  run bash "${REPO_ROOT}/scripts/codex/sync-mcp.sh" -i "$TEST_SRC/mcp-servers" -o "$TEST_OUT" --items context7
+  [ "$status" -eq 0 ]
+  grep -q '^model = "gpt-5"$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^\[mcp_servers\."keep"\]$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^command = "keep-server"$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^\[mcp_servers\."context7"\]$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^command = "npx"$' "$TEST_OUT/.codex/config.toml"
+  ! grep -q 'old-server' "$TEST_OUT/.codex/config.toml"
+
+  run bash "${REPO_ROOT}/scripts/codex/sync-mcp.sh" -i "$TEST_SRC/mcp-servers" -o "$TEST_OUT" --items context7 --clean
+  [ "$status" -eq 0 ]
+  grep -q '^model = "gpt-5"$' "$TEST_OUT/.codex/config.toml"
+  ! grep -q '^\[mcp_servers\."keep"\]$' "$TEST_OUT/.codex/config.toml"
+  grep -q '^\[mcp_servers\."context7"\]$' "$TEST_OUT/.codex/config.toml"
+}
+
+@test "codex sync-mcp: codex-sync-mcp false leaves config.toml untouched" {
+  mkdir -p "$TEST_OUT/.codex"
+  cat > "$TEST_OUT/.codex/config.toml" <<'TOML'
+model = "gpt-5"
+
+[mcp_servers."existing"]
+command = "existing-server"
+TOML
+  cp "$TEST_OUT/.codex/config.toml" "$TEST_OUT/config.before"
+  conf="$TEST_OUT/cyncia.conf"
+  echo 'codex-sync-mcp: false' > "$conf"
+  export CYNCIA_CONF="$conf"
+  run bash "${REPO_ROOT}/scripts/codex/sync-mcp.sh" -i "$TEST_SRC/mcp-servers" -o "$TEST_OUT" --clean
+  unset CYNCIA_CONF
+  [ "$status" -eq 0 ]
+  diff -u "$TEST_OUT/config.before" "$TEST_OUT/.codex/config.toml"
+}

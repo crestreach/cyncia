@@ -1,6 +1,6 @@
 # Tool versions
 
-**Snapshot (UTC):** 2026-04-24
+**Snapshot (UTC):** 2026-05-04
 
 | Tool | Version |
 |------|---------|
@@ -9,3 +9,4 @@
 | GitHub Copilot Chat (VS Code) | 0.43.0 |
 | Claude Code (`@anthropic-ai/claude-code`) | 2.1.119 |
 | Junie (JetBrains Marketplace) | 261.1218.182 (2026-04-22) |
+| Codex CLI (`@openai/codex`) | 0.128.0 (GitHub release `rust-v0.128.0`) |

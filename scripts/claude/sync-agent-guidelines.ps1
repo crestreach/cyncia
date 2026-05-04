@@ -2,7 +2,7 @@
 .SYNOPSIS
   Write CLAUDE.md from AGENTS.md plus rules/<name>.md.
 .DESCRIPTION
-  Two emission modes are supported, selected by claude_rules_mode in
+  Two emission modes are supported, selected by claude-rules-mode in
   <cyncia-dir>/cyncia.conf (default: claude-md):
 
     claude-md   Append rule bodies into CLAUDE.md, grouped by source file
@@ -48,9 +48,9 @@ if ($Clean -and (Test-Path -LiteralPath $dst -PathType Leaf)) {
 }
 $rulesDir = Join-Path $srcRoot 'rules'
 
-$mode = Get-CynciaConfValue -Key 'claude_rules_mode' -Default 'claude-md'
+$mode = Get-CynciaConfValue -Key 'claude-rules-mode' -Default 'claude-md'
 if ($mode -ne 'claude-md' -and $mode -ne 'rule-files') {
-  Write-Warning "claude agent-guidelines: unknown claude_rules_mode='$mode' (valid: claude-md, rule-files); falling back to claude-md"
+  Write-Warning "claude agent-guidelines: unknown claude-rules-mode='$mode' (valid: claude-md, rule-files); falling back to claude-md"
   $mode = 'claude-md'
 }
 
@@ -84,7 +84,7 @@ if (Test-Path -LiteralPath $rulesDir -PathType Container) {
           [void]$section.AppendLine("_${desc}_")
           [void]$section.AppendLine()
         }
-        $body = Get-MarkdownBody -Path $rf.FullName
+        $body = Get-MarkdownBodyForEmbeddedSection -Path $rf.FullName -TargetHeadingLevel 4
         if ($body) { [void]$section.AppendLine(($body -join "`n").TrimEnd()) }
         [void]$section.AppendLine()
         $parts.Add($section.ToString())

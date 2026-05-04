@@ -55,11 +55,17 @@ run_install() {
   run env CYNCIA_REPO="" CYNCIA_REF="" bash "$INSTALL_SH" "$@"
 }
 
-@test "install: creates .cyncia/cyncia.conf with default claude_rules_mode" {
+@test "install: creates .cyncia/cyncia.conf with default properties" {
   run_install --no-bootstrap
   [ "$status" -eq 0 ]
   [ -f "$TEST_HOME/.cyncia/cyncia.conf" ]
-  grep -Eq '^claude_rules_mode:[[:space:]]*claude-md[[:space:]]*$' \
+  grep -Eq '^claude-rules-mode:[[:space:]]*claude-md[[:space:]]*$' \
+    "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -Eq '^codex-rules-mode:[[:space:]]*agents-override[[:space:]]*$' \
+    "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -Eq '^codex-sync-mcp:[[:space:]]*true[[:space:]]*$' \
+    "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -Eq '^default-tools:[[:space:]]*cursor,claude,copilot,vscode,junie,codex[[:space:]]*$' \
     "$TEST_HOME/.cyncia/cyncia.conf"
   [[ "$output" == *"Creating"* ]]
   [[ "$output" == *"cyncia.conf"* ]]
@@ -70,7 +76,7 @@ run_install() {
   [ "$status" -eq 0 ]
 
   # User edits the value (portable in-place edit, works on macOS/BSD sed).
-  awk '/^claude_rules_mode:/ { print "claude_rules_mode: rule-files"; next } { print }' \
+  awk '/^claude-rules-mode:/ { print "claude-rules-mode: rule-files"; next } { print }' \
     "$TEST_HOME/.cyncia/cyncia.conf" > "$TEST_HOME/.cyncia/cyncia.conf.tmp"
   mv "$TEST_HOME/.cyncia/cyncia.conf.tmp" "$TEST_HOME/.cyncia/cyncia.conf"
   cp "$TEST_HOME/.cyncia/cyncia.conf" "$TEST_HOME/conf.before"
@@ -90,7 +96,13 @@ EOF
 
   run_install --bootstrap
   [ "$status" -eq 0 ]
-  grep -Eq '^claude_rules_mode:[[:space:]]*claude-md' \
+  grep -Eq '^claude-rules-mode:[[:space:]]*claude-md' \
+    "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -Eq '^codex-rules-mode:[[:space:]]*agents-override' \
+    "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -Eq '^codex-sync-mcp:[[:space:]]*true' \
+    "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -Eq '^default-tools:[[:space:]]*cursor,claude,copilot,vscode,junie,codex' \
     "$TEST_HOME/.cyncia/cyncia.conf"
   [[ "$output" == *"New cyncia.conf property"* ]]
   [[ "$output" == *"Add"* ]]
@@ -105,14 +117,15 @@ EOF
 
   run_install --no-bootstrap
   [ "$status" -eq 0 ]
-  ! grep -q '^claude_rules_mode:' "$TEST_HOME/.cyncia/cyncia.conf"
+  ! grep -q '^claude-rules-mode:' "$TEST_HOME/.cyncia/cyncia.conf"
+  ! grep -q '^default-tools:' "$TEST_HOME/.cyncia/cyncia.conf"
   [[ "$output" == *"-> no"* ]]
 }
 
 @test "install: prompts to remove unsupported property; --no-bootstrap keeps it" {
   mkdir -p "$TEST_HOME/.cyncia"
   cat > "$TEST_HOME/.cyncia/cyncia.conf" <<'EOF'
-claude_rules_mode: claude-md
+claude-rules-mode: claude-md
 deprecated_option: hello
 EOF
 
@@ -127,12 +140,13 @@ EOF
 @test "install: --bootstrap removes unsupported property" {
   mkdir -p "$TEST_HOME/.cyncia"
   cat > "$TEST_HOME/.cyncia/cyncia.conf" <<'EOF'
-claude_rules_mode: claude-md
+claude-rules-mode: claude-md
 deprecated_option: hello
 EOF
 
   run_install --bootstrap
   [ "$status" -eq 0 ]
   ! grep -q '^deprecated_option:' "$TEST_HOME/.cyncia/cyncia.conf"
-  grep -q '^claude_rules_mode:' "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -q '^claude-rules-mode:' "$TEST_HOME/.cyncia/cyncia.conf"
+  grep -q '^default-tools:' "$TEST_HOME/.cyncia/cyncia.conf"
 }

@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
   Claude Code rule emission for rules/<name>.md, controlled by
-  claude_rules_mode in <cyncia-dir>/cyncia.conf (default: claude-md).
+  claude-rules-mode in <cyncia-dir>/cyncia.conf (default: claude-md).
 .DESCRIPTION
   claude-md   No-op. Rule bodies are merged into CLAUDE.md by
               sync-agent-guidelines.ps1.
@@ -33,9 +33,9 @@ param(
 $inputDir  = Resolve-AbsoluteDirectory -Path $InputPath
 $outputDir = Resolve-AbsoluteDirectory -Path $OutputPath
 
-$mode = Get-CynciaConfValue -Key 'claude_rules_mode' -Default 'claude-md'
+$mode = Get-CynciaConfValue -Key 'claude-rules-mode' -Default 'claude-md'
 if ($mode -ne 'claude-md' -and $mode -ne 'rule-files') {
-  Write-Warning "claude rules: unknown claude_rules_mode='$mode' (valid: claude-md, rule-files); falling back to claude-md"
+  Write-Warning "claude rules: unknown claude-rules-mode='$mode' (valid: claude-md, rule-files); falling back to claude-md"
   $mode = 'claude-md'
 }
 

@@ -20,12 +20,13 @@ teardown() {
   [[ -n "${TEST_OUT:-}" && -d "$TEST_OUT" ]] && rm -rf "$TEST_OUT"
 }
 
-@test "sync-all: writes mcp.json for cursor, claude, vscode when mcp-servers/ present" {
+@test "sync-all: writes MCP config for cursor, claude, vscode, and codex when mcp-servers/ present" {
   run bash "$SYNC_ALL_SH" -i "$TEST_SRC" -o "$TEST_OUT"
   [ "$status" -eq 0 ]
   [ -f "$TEST_OUT/.cursor/mcp.json" ]
   [ -f "$TEST_OUT/.mcp.json" ]
   [ -f "$TEST_OUT/.vscode/mcp.json" ]
+  [ -f "$TEST_OUT/.codex/config.toml" ]
   # Junie does not write a file.
   [ ! -f "$TEST_OUT/.junie/mcp.json" ]
   # Snippet should still be printed to stdout.
@@ -39,12 +40,23 @@ teardown() {
   [ ! -f "$TEST_OUT/.cursor/mcp.json" ]
   [ ! -f "$TEST_OUT/.mcp.json" ]
   [ ! -f "$TEST_OUT/.vscode/mcp.json" ]
+  [ ! -f "$TEST_OUT/.codex/config.toml" ]
 }
 
 @test "sync-all --tools cursor: only cursor mcp.json produced" {
   run bash "$SYNC_ALL_SH" -i "$TEST_SRC" -o "$TEST_OUT" --tools cursor
   [ "$status" -eq 0 ]
   [ -f "$TEST_OUT/.cursor/mcp.json" ]
+  [ ! -f "$TEST_OUT/.mcp.json" ]
+  [ ! -f "$TEST_OUT/.vscode/mcp.json" ]
+  [ ! -f "$TEST_OUT/.codex/config.toml" ]
+}
+
+@test "sync-all --tools codex: only codex MCP config produced" {
+  run bash "$SYNC_ALL_SH" -i "$TEST_SRC" -o "$TEST_OUT" --tools codex
+  [ "$status" -eq 0 ]
+  [ -f "$TEST_OUT/.codex/config.toml" ]
+  [ ! -f "$TEST_OUT/.cursor/mcp.json" ]
   [ ! -f "$TEST_OUT/.mcp.json" ]
   [ ! -f "$TEST_OUT/.vscode/mcp.json" ]
 }

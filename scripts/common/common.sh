@@ -125,6 +125,100 @@ strip_frontmatter() {
   ' "$1"
 }
 
+# strip_frontmatter_normalize_headings <file> [target_level]
+#   Print markdown body with leading YAML frontmatter removed and ATX headings
+#   shifted so the highest heading in the body starts at target_level.
+#   Fenced code blocks are preserved verbatim.
+strip_frontmatter_normalize_headings() {
+  local target_level="${2:-4}"
+  awk -v target="$target_level" '
+    function fence_marker(line, tmp, marker) {
+      tmp = line
+      sub(/^ {0,3}/, "", tmp)
+      if (tmp ~ /^```+/) {
+        marker = tmp
+        sub(/[^`].*$/, "", marker)
+        return marker
+      }
+      if (tmp ~ /^~~~+/) {
+        marker = tmp
+        sub(/[^~].*$/, "", marker)
+        return marker
+      }
+      return ""
+    }
+    function heading_level(line, tmp, n) {
+      tmp = line
+      sub(/^ {0,3}/, "", tmp)
+      if (tmp !~ /^#{1,6}([ \t]|$)/) return 0
+      n = 0
+      while (substr(tmp, n + 1, 1) == "#" && n < 6) n++
+      return n
+    }
+    function repeat_hashes(n, out) {
+      out = ""
+      while (n-- > 0) out = out "#"
+      return out
+    }
+    function rewrite_heading(line, offset, indent, tmp, old_len, new_len, hashes, rest) {
+      match(line, /^ {0,3}/)
+      indent = substr(line, RSTART, RLENGTH)
+      tmp = substr(line, RLENGTH + 1)
+      old_len = heading_level(line)
+      new_len = old_len + offset
+      if (new_len < 1) new_len = 1
+      if (new_len > 6) new_len = 6
+      hashes = repeat_hashes(new_len)
+      rest = substr(tmp, old_len + 1)
+      sub(/[ \t]+#{1,}[ \t]*$/, " " hashes, rest)
+      return indent hashes rest
+    }
+    BEGIN { in_fm=0; in_fence=0; fence_char=""; fence_len=0; min=0; count=0 }
+    NR==1 && /^---[[:space:]]*$/ { in_fm=1; next }
+    in_fm && /^---[[:space:]]*$/ { in_fm=0; next }
+    in_fm { next }
+    {
+      lines[++count] = $0
+      marker = fence_marker($0)
+      if (in_fence) {
+        if (marker != "" && substr(marker, 1, 1) == fence_char && length(marker) >= fence_len) in_fence = 0
+        next
+      }
+      if (marker != "") {
+        in_fence = 1
+        fence_char = substr(marker, 1, 1)
+        fence_len = length(marker)
+        next
+      }
+      level = heading_level($0)
+      if (level > 0 && (min == 0 || level < min)) min = level
+    }
+    END {
+      offset = (min > 0) ? target - min : 0
+      in_fence = 0
+      fence_char = ""
+      fence_len = 0
+      for (i = 1; i <= count; i++) {
+        marker = fence_marker(lines[i])
+        if (in_fence) {
+          print lines[i]
+          if (marker != "" && substr(marker, 1, 1) == fence_char && length(marker) >= fence_len) in_fence = 0
+          continue
+        }
+        if (marker != "") {
+          in_fence = 1
+          fence_char = substr(marker, 1, 1)
+          fence_len = length(marker)
+          print lines[i]
+          continue
+        }
+        if (heading_level(lines[i]) > 0) print rewrite_heading(lines[i], offset)
+        else print lines[i]
+      }
+    }
+  ' "$1"
+}
+
 # extract_field <file> <key>
 #   Print first matching scalar frontmatter field, stripped of surrounding quotes.
 #   Returns empty string if not present.

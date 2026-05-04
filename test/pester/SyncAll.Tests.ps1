@@ -57,6 +57,99 @@ Describe 'sync-all.ps1' {
     }
   }
 
+  It 'with -Tools codex creates Codex outputs' {
+    $src = & $script:NewTestSourceFromFixture
+    $out = & $script:NewTestOutputDir
+    try {
+      & $script:SyncAllPs1 -InputRoot $src -OutputRoot $out -Tools codex
+      (Test-Path -LiteralPath (Join-Path $out '.codex\agents\one.toml')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out '.agents\skills\alpha\SKILL.md')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out 'AGENTS.md')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out 'AGENTS.override.md')) | Should -BeTrue
+      $override = Get-Content -LiteralPath (Join-Path $out 'AGENTS.override.md') -Raw
+      $override | Should -Match '## Project rules'
+      $override | Should -Match '(?m)^#### Rule A$'
+      (Test-Path -LiteralPath (Join-Path $out '.cursor')) | Should -BeFalse
+      (Test-Path -LiteralPath (Join-Path $out '.github')) | Should -BeFalse
+    } finally {
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  It 'uses default-tools from cyncia.conf when -Tools is omitted' {
+    $src = & $script:NewTestSourceFromFixture
+    $out = & $script:NewTestOutputDir
+    $oldConf = $env:CYNCIA_CONF
+    try {
+      $conf = Join-Path $out 'cyncia.conf'
+      Set-Content -LiteralPath $conf -Value 'default-tools: codex' -Encoding UTF8
+      $env:CYNCIA_CONF = $conf
+      & $script:SyncAllPs1 -InputRoot $src -OutputRoot $out
+      (Test-Path -LiteralPath (Join-Path $out '.codex\agents\one.toml')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out '.agents\skills\alpha\SKILL.md')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out '.cursor')) | Should -BeFalse
+      (Test-Path -LiteralPath (Join-Path $out '.github')) | Should -BeFalse
+    } finally {
+      if ($oldConf) { $env:CYNCIA_CONF = $oldConf } else { Remove-Item Env:CYNCIA_CONF -ErrorAction SilentlyContinue }
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  It 'respects codex-rules-mode ignore' {
+    $src = & $script:NewTestSourceFromFixture
+    $out = & $script:NewTestOutputDir
+    $oldConf = $env:CYNCIA_CONF
+    try {
+      $conf = Join-Path $out 'cyncia.conf'
+      Set-Content -LiteralPath $conf -Value 'codex-rules-mode: ignore' -Encoding UTF8
+      $env:CYNCIA_CONF = $conf
+      & $script:SyncAllPs1 -InputRoot $src -OutputRoot $out -Tools codex
+      (Test-Path -LiteralPath (Join-Path $out 'AGENTS.md')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out 'AGENTS.override.md')) | Should -BeFalse
+    } finally {
+      if ($oldConf) { $env:CYNCIA_CONF = $oldConf } else { Remove-Item Env:CYNCIA_CONF -ErrorAction SilentlyContinue }
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  It 'normalizes embedded rule headings below the generated rule wrapper' {
+    $src = & $script:NewTestSourceFromFixture
+    $out = & $script:NewTestOutputDir
+    try {
+      Set-Content -LiteralPath (Join-Path $src 'rules\ra.md') -Encoding UTF8 -Value @'
+---
+description: Nested headings
+---
+
+## Top
+
+### Child
+
+#### Grandchild
+
+```pwsh
+# Not a heading
+```
+'@
+      & $script:SyncAllPs1 -InputRoot $src -OutputRoot $out -Tools 'claude,codex,junie'
+      foreach ($generated in @(
+          (Join-Path $out 'CLAUDE.md'),
+          (Join-Path $out 'AGENTS.override.md'),
+          (Join-Path $out '.junie\AGENTS.md')
+        )) {
+        $body = Get-Content -LiteralPath $generated -Raw
+        $body | Should -Match '(?m)^### `ra.md`$'
+        $body | Should -Match '(?m)^#### Top$'
+        $body | Should -Match '(?m)^##### Child$'
+        $body | Should -Match '(?m)^###### Grandchild$'
+        $body | Should -Match '(?m)^# Not a heading$'
+        $body | Should -Not -Match '(?m)^## Top$'
+      }
+    } finally {
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
   It 'missing required parameters does not hang (non-interactive pwsh errors)' {
     # Calling a script with missing Mandatory params can trigger an interactive prompt.
     # Run in a separate non-interactive process so we get a normal error/exit code.
@@ -196,7 +289,19 @@ Describe 'sync-all.ps1' {
       $j = Get-Content -LiteralPath (Join-Path $out '.junie\AGENTS.md') -Raw
       $j | Should -Match '## Project rules'
       $j | Should -Match '### `ra.md`'
-      $j | Should -Match 'Rule A'
+      $j | Should -Match '(?m)^#### Rule A$'
+    } finally {
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  It 'Codex sync-rules.ps1 is a no-op for Markdown rules' {
+    $src = & $script:NewTestSourceFromFixture
+    $out = & $script:NewTestOutputDir
+    $r = Join-Path $script:RepoRoot 'scripts\codex\sync-rules.ps1'
+    try {
+      & $r -InputPath (Join-Path $src 'rules') -OutputPath $out -Clean
+      (Test-Path -LiteralPath (Join-Path $out '.codex\rules')) | Should -BeFalse
     } finally {
       Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
     }
@@ -231,7 +336,7 @@ Describe 'Per-tool .ps1' {
     }
   }
 
-  It 'claude\sync-rules.ps1 is a no-op when claude_rules_mode is unset (default)' {
+  It 'claude\sync-rules.ps1 is a no-op when claude-rules-mode is unset (default)' {
     $src = & $script:NewTestSourceFromFixture
     $out = & $script:NewTestOutputDir
     $r = Join-Path $script:RepoRoot 'scripts\claude\sync-rules.ps1'
@@ -244,13 +349,13 @@ Describe 'Per-tool .ps1' {
     }
   }
 
-  It 'claude\sync-rules.ps1 emits per-rule files when claude_rules_mode is rule-files' {
+  It 'claude\sync-rules.ps1 emits per-rule files when claude-rules-mode is rule-files' {
     $src = & $script:NewTestSourceFromFixture
     $out = & $script:NewTestOutputDir
     $r = Join-Path $script:RepoRoot 'scripts\claude\sync-rules.ps1'
     $conf = Join-Path $out 'cyncia.conf'
     try {
-      Set-Content -LiteralPath $conf -Value "claude_rules_mode: rule-files" -Encoding UTF8
+      Set-Content -LiteralPath $conf -Value "claude-rules-mode: rule-files" -Encoding UTF8
       $env:CYNCIA_CONF = $conf
       & $r -InputPath (Join-Path $src 'rules') -OutputPath $out
       (Test-Path -LiteralPath (Join-Path $out '.claude\rules\ra.md')) | Should -BeTrue
@@ -272,7 +377,7 @@ Describe 'Per-tool .ps1' {
     $r = Join-Path $script:RepoRoot 'scripts\claude\sync-agent-guidelines.ps1'
     $conf = Join-Path $out 'cyncia.conf'
     try {
-      Set-Content -LiteralPath $conf -Value "claude_rules_mode: rule-files" -Encoding UTF8
+      Set-Content -LiteralPath $conf -Value "claude-rules-mode: rule-files" -Encoding UTF8
       $env:CYNCIA_CONF = $conf
       & $r -InputPath $src -OutputPath $out
       $cl = Get-Content -LiteralPath (Join-Path $out 'CLAUDE.md') -Raw
@@ -292,7 +397,7 @@ Describe 'Per-tool .ps1' {
     $r = Join-Path $script:RepoRoot 'scripts\claude\sync-rules.ps1'
     $conf = Join-Path $out 'cyncia.conf'
     try {
-      Set-Content -LiteralPath $conf -Value "claude_rules_mode: rule-files" -Encoding UTF8
+      Set-Content -LiteralPath $conf -Value "claude-rules-mode: rule-files" -Encoding UTF8
       $env:CYNCIA_CONF = $conf
       $rulesOut = Join-Path $out '.claude\rules'
       New-Item -ItemType Directory -Force -Path $rulesOut | Out-Null

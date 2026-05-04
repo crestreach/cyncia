@@ -4,7 +4,7 @@
 # (all four are optional), and one output project root.
 #
 # Usage:
-#   sync-all.sh -i <source_root> -o <output_root> [--tools cursor,claude,copilot,vscode,junie] [--items a,b,c] [--clean]
+#   sync-all.sh -i <source_root> -o <output_root> [--tools cursor,claude,copilot,vscode,junie,codex] [--items a,b,c] [--clean]
 #
 #   <source_root>  Must contain AGENTS.md. May optionally contain any of:
 #                    agents/        (one *.md per agent)
@@ -14,6 +14,8 @@
 #                  Each subscript is skipped when its source dir is absent.
 #   <output_root>  Project root where tool-specific files are written (.cursor, …)
 #                  Each sync-agent-guidelines copies AGENTS.md here when i≠o.
+#   --tools        Comma-separated tool list. Defaults to the `default-tools`
+#                  value in cyncia.conf, or all supported tools when unset.
 #   --clean        Forwarded to every per-tool script: clear that script’s
 #                  output location(s) before writing (default: off). See each
 #                  sync-*.sh header for what is removed.
@@ -25,7 +27,10 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TOOLS="cursor,claude,copilot,vscode,junie"
+source "$SCRIPT_DIR/common/common.sh"
+
+DEFAULT_TOOLS="cursor,claude,copilot,vscode,junie,codex"
+TOOLS=""
 ITEMS=""
 INPUT_BASE=""
 OUTPUT_BASE=""
@@ -69,6 +74,10 @@ OUTPUT_BASE="$(cd "$OUTPUT_BASE" && pwd)"
 AGENTS_FILE="$INPUT_BASE/AGENTS.md"
 if [[ ! -f "$AGENTS_FILE" ]]; then
   echo "Missing $AGENTS_FILE" >&2; exit 1
+fi
+
+if [[ -z "$TOOLS" ]]; then
+  TOOLS="$(read_cyncia_conf default-tools "$DEFAULT_TOOLS")"
 fi
 
 IFS=',' read -r -a TOOL_LIST <<< "$TOOLS"

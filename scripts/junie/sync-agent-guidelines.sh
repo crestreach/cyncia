@@ -55,7 +55,7 @@ RULES_DIR="$SRC_ROOT/rules"
         if [[ -n "$desc" ]]; then
           printf '_%s_\n\n' "$desc"
         fi
-        strip_frontmatter "$f"
+        strip_frontmatter_normalize_headings "$f" 4
         printf '\n\n'
       done < <(printf '%s\n' "${_rf[@]}" | LC_ALL=C sort)
     fi

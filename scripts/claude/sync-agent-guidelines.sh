@@ -2,7 +2,7 @@
 # Write <output_root>/CLAUDE.md from <source_root>/AGENTS.md plus each
 # <source_root>/rules/<name>.md.
 #
-# Two emission modes are supported, selected by the `claude_rules_mode` key
+# Two emission modes are supported, selected by the `claude-rules-mode` key
 # in `<cyncia-dir>/cyncia.conf` (default: `claude-md`):
 #
 #   claude-md    Append rule bodies into CLAUDE.md, grouped by source file.
@@ -52,11 +52,11 @@ if [[ "$CLEAN" == "true" && -f "$DST" ]]; then
 fi
 
 RULES_DIR="$SRC_ROOT/rules"
-MODE="$(read_cyncia_conf claude_rules_mode claude-md)"
+MODE="$(read_cyncia_conf claude-rules-mode claude-md)"
 case "$MODE" in
   claude-md|rule-files) ;;
   *)
-    echo "claude agent-guidelines: unknown claude_rules_mode='$MODE' (valid: claude-md, rule-files); falling back to claude-md" >&2
+    echo "claude agent-guidelines: unknown claude-rules-mode='$MODE' (valid: claude-md, rule-files); falling back to claude-md" >&2
     MODE="claude-md"
     ;;
 esac
@@ -91,7 +91,7 @@ esac
             if [[ -n "$desc" ]]; then
               printf '_%s_\n\n' "$desc"
             fi
-            strip_frontmatter "$f"
+            strip_frontmatter_normalize_headings "$f" 4
             printf '\n\n'
           done < <(printf '%s\n' "${_kept[@]}" | LC_ALL=C sort)
         fi

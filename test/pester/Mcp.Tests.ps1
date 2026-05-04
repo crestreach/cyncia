@@ -109,6 +109,84 @@ Describe 'sync-mcp.ps1 — basic translation' {
       Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
     }
   }
+
+  It 'codex: writes config.toml with Codex MCP tables' {
+    $src = & $script:NewMcpSource
+    $out = & $script:NewOut
+    try {
+      & (& $script:McpScript 'codex') -InputPath (Join-Path $src 'mcp-servers') -OutputPath $out
+      $toml = Get-Content -LiteralPath (Join-Path $out '.codex\config.toml') -Raw
+      $toml | Should -Match '(?m)^\[mcp_servers\."context7"\]$'
+      $toml | Should -Match '(?m)^command = "npx"$'
+      $toml | Should -Match '(?m)^env_vars = \["CONTEXT7_API_KEY"\]$'
+      $toml | Should -Match '(?m)^\[mcp_servers\."httpbin"\]$'
+      $toml | Should -Match '(?m)^bearer_token_env_var = "HTTPBIN_TOKEN"$'
+    } finally {
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  It 'codex: merges only mcp_servers into existing config.toml' {
+    $src = & $script:NewMcpSource
+    $out = & $script:NewOut
+    try {
+      $configDir = Join-Path $out '.codex'
+      New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+      @'
+model = "gpt-5"
+
+[mcp_servers."keep"]
+command = "keep-server"
+
+[mcp_servers."context7"]
+command = "old-server"
+'@ | Set-Content -LiteralPath (Join-Path $configDir 'config.toml') -Encoding UTF8
+
+      & (& $script:McpScript 'codex') -InputPath (Join-Path $src 'mcp-servers') -OutputPath $out -Items context7
+      $toml = Get-Content -LiteralPath (Join-Path $configDir 'config.toml') -Raw
+      $toml | Should -Match '(?m)^model = "gpt-5"$'
+      $toml | Should -Match '(?m)^\[mcp_servers\."keep"\]$'
+      $toml | Should -Match '(?m)^command = "keep-server"$'
+      $toml | Should -Match '(?m)^\[mcp_servers\."context7"\]$'
+      $toml | Should -Match '(?m)^command = "npx"$'
+      $toml | Should -Not -Match 'old-server'
+
+      & (& $script:McpScript 'codex') -InputPath (Join-Path $src 'mcp-servers') -OutputPath $out -Items context7 -Clean
+      $toml = Get-Content -LiteralPath (Join-Path $configDir 'config.toml') -Raw
+      $toml | Should -Match '(?m)^model = "gpt-5"$'
+      $toml | Should -Not -Match '(?m)^\[mcp_servers\."keep"\]$'
+      $toml | Should -Match '(?m)^\[mcp_servers\."context7"\]$'
+    } finally {
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  It 'codex: codex-sync-mcp false leaves config.toml untouched' {
+    $src = & $script:NewMcpSource
+    $out = & $script:NewOut
+    $oldConf = $env:CYNCIA_CONF
+    try {
+      $configDir = Join-Path $out '.codex'
+      New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+      $configPath = Join-Path $configDir 'config.toml'
+      @'
+model = "gpt-5"
+
+[mcp_servers."existing"]
+command = "existing-server"
+'@ | Set-Content -LiteralPath $configPath -Encoding UTF8
+      $before = Get-Content -LiteralPath $configPath -Raw
+      $conf = Join-Path $out 'cyncia.conf'
+      Set-Content -LiteralPath $conf -Value 'codex-sync-mcp: false' -Encoding UTF8
+      $env:CYNCIA_CONF = $conf
+
+      & (& $script:McpScript 'codex') -InputPath (Join-Path $src 'mcp-servers') -OutputPath $out -Clean
+      (Get-Content -LiteralPath $configPath -Raw) | Should -Be $before
+    } finally {
+      if ($oldConf) { $env:CYNCIA_CONF = $oldConf } else { Remove-Item Env:CYNCIA_CONF -ErrorAction SilentlyContinue }
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
 }
 
 Describe 'sync-mcp.ps1 — items and clean' {
@@ -165,7 +243,7 @@ Describe 'sync-mcp.ps1 — items and clean' {
 }
 
 Describe 'sync-all.ps1 — MCP integration' {
-  It 'writes mcp.json for cursor/claude/vscode when mcp-servers/ present' {
+  It 'writes MCP config for cursor/claude/vscode/codex when mcp-servers/ present' {
     $src = & {
       $tmp = [System.IO.Path]::GetTempPath()
       $d = Join-Path $tmp ("pester_mcp_all_src_" + [Guid]::NewGuid().ToString('N'))
@@ -181,6 +259,7 @@ Describe 'sync-all.ps1 — MCP integration' {
       (Test-Path -LiteralPath (Join-Path $out '.cursor\mcp.json')) | Should -BeTrue
       (Test-Path -LiteralPath (Join-Path $out '.mcp.json')) | Should -BeTrue
       (Test-Path -LiteralPath (Join-Path $out '.vscode\mcp.json')) | Should -BeTrue
+      (Test-Path -LiteralPath (Join-Path $out '.codex\config.toml')) | Should -BeTrue
       (Test-Path -LiteralPath (Join-Path $out '.junie\mcp.json')) | Should -BeFalse
     } finally {
       Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
@@ -261,6 +340,17 @@ Plain body.
     $body = Get-Content -LiteralPath (Join-Path $script:agentsOut '.junie\agents\aside.md') -Raw
     $body | Should -Not -Match '(?m)^mcp-servers:'
     $body | Should -Not -Match '(?m)^tools:'
+  }
+
+  It 'codex writes TOML custom agent without generic mcp-servers' {
+    & (& $script:McpScript 'codex' 'sync-agents.ps1') -InputPath (Join-Path $script:agentsSrc 'agents') -OutputPath $script:agentsOut
+    $body = Get-Content -LiteralPath (Join-Path $script:agentsOut '.codex\agents\aside.toml') -Raw
+    $body | Should -Match '(?m)^name = "aside"$'
+    $body | Should -Match '(?m)^description = "Side question agent\."$'
+    $body | Should -Match '(?m)^developer_instructions = """$'
+    $body | Should -Match 'Body\.'
+    $body | Should -Not -Match 'mcp-servers'
+    $body | Should -Not -Match 'mcpServers'
   }
 
   It 'copilot errors when both mcp-servers and tools are present' {

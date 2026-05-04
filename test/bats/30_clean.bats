@@ -38,3 +38,11 @@ load test_helper
   [ "$status" -eq 0 ]
   [[ "$output" == *"skipped"* ]]
 }
+
+@test "codex sync-rules: accepts --clean and remains no-op" {
+  RSH="${REPO_ROOT}/scripts/codex/sync-rules.sh"
+  run bash "$RSH" -i "$TEST_SRC/rules" -o "$TEST_OUT" --clean
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skipped"* ]]
+  [ ! -d "$TEST_OUT/.codex/rules" ]
+}
