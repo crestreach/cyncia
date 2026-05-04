@@ -38,12 +38,45 @@ load test_helper
   [ -f "$TEST_OUT/AGENTS.md" ]
   [ -f "$TEST_OUT/AGENTS.override.md" ]
   grep -q '^## Project rules' "$TEST_OUT/AGENTS.override.md"
-  grep -q '^# Rule A' "$TEST_OUT/AGENTS.override.md"
+  grep -q '^#### Rule A' "$TEST_OUT/AGENTS.override.md"
   [ -f "$TEST_OUT/.codex/agents/one.toml" ]
   [ -f "$TEST_OUT/.agents/skills/alpha/SKILL.md" ]
   [ ! -d "$TEST_OUT/.cursor" ]
   [ ! -d "$TEST_OUT/.claude" ]
   [ ! -d "$TEST_OUT/.github" ]
+}
+
+@test "sync-all: embedded rule headings are normalized below rule wrapper" {
+  cat > "$TEST_SRC/rules/ra.md" <<'EOF'
+---
+description: Nested headings
+---
+
+## Top
+
+### Child
+
+#### Grandchild
+
+```sh
+# Not a heading
+```
+EOF
+
+  run bash "$SYNC_ALL_SH" -i "$TEST_SRC" -o "$TEST_OUT" --tools claude,codex,junie
+  [ "$status" -eq 0 ]
+  for generated in \
+    "$TEST_OUT/CLAUDE.md" \
+    "$TEST_OUT/AGENTS.override.md" \
+    "$TEST_OUT/.junie/AGENTS.md"
+  do
+    grep -q '^### `ra.md`' "$generated"
+    grep -q '^#### Top$' "$generated"
+    grep -q '^##### Child$' "$generated"
+    grep -q '^###### Grandchild$' "$generated"
+    grep -q '^# Not a heading$' "$generated"
+    ! grep -q '^## Top$' "$generated"
+  done
 }
 
 @test "sync-all: default-tools from cyncia.conf controls omitted --tools" {

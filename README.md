@@ -54,6 +54,11 @@ policies, not Markdown instruction files. By default Cyncia merges generic
 `AGENTS.md` in the same directory. Keep Codex command policy under
 `.codex/rules/*.rules` by hand.
 
+When rule bodies are merged into a larger guideline file (`CLAUDE.md`,
+`.junie/AGENTS.md`, or `AGENTS.override.md`), Cyncia shifts the imported rule's
+ATX headings so the highest rule heading starts under the generated rule-file
+section. Standalone rule files keep their original heading levels.
+
 ## Dependencies
 
 - **Bash 4+** (macOS/Linux/WSL/Git Bash) — for `scripts/**/*.sh`.

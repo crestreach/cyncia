@@ -84,7 +84,7 @@ if (Test-Path -LiteralPath $rulesDir -PathType Container) {
           [void]$section.AppendLine("_${desc}_")
           [void]$section.AppendLine()
         }
-        $body = Get-MarkdownBody -Path $rf.FullName
+        $body = Get-MarkdownBodyForEmbeddedSection -Path $rf.FullName -TargetHeadingLevel 4
         if ($body) { [void]$section.AppendLine(($body -join "`n").TrimEnd()) }
         [void]$section.AppendLine()
         $parts.Add($section.ToString())

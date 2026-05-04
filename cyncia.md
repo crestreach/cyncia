@@ -54,7 +54,7 @@ Cyncia generates the per-tool files:
 **How each tool picks the generated files up:**
 
 - **Guidelines** (`AGENTS.md` / `CLAUDE.md` / `.github/copilot-instructions.md` / `.junie/AGENTS.md`) are auto-loaded by the matching tool. Junie resolves the first of: `.junie/AGENTS.md` → root `AGENTS.md` → legacy `guidelines` (see [Guidelines and memory](https://junie.jetbrains.com/docs/guidelines-and-memory.html)).
-- **Rules** are auto-applied per `globs` / `applyTo` / `alwaysApply` (Cursor and Copilot). Claude and Junie merge rule bodies into their guidelines file.
+- **Rules** are auto-applied per `globs` / `applyTo` / `alwaysApply` (Cursor and Copilot). Claude and Junie merge rule bodies into their guidelines file. When rules are merged into a larger guideline file, Cyncia shifts imported ATX headings so the highest heading in each rule starts under the generated per-rule section; standalone rule files keep their original heading levels.
 - **Skills** are discovered automatically but **not all injected every time** — the agent selects skills by relevance (Claude can additionally gate by `paths`).
 - **Agents** are discovered, but **not run automatically**: they’re invoked (picker, `/command`, delegate, or `@name`).
 - **Codex** reads root/nested `AGENTS.md` and `AGENTS.override.md`, preferring
@@ -149,6 +149,14 @@ always-apply: false              # optional; true = always on (overrides applies
 | Claude Code | `.claude/rules/<name>.md` *(only when `claude-rules-mode: rule-files` in `cyncia.conf`)* | Default `claude-md` mode merges rule bodies into `CLAUDE.md` via `sync-agent-guidelines`. With `rule-files`, each rule is written to its own file (frontmatter stripped) and referenced from `CLAUDE.md` via Claude Code's `@.claude/rules/<name>.md` memory-import syntax, so it loads with the same priority as `CLAUDE.md`. |
 | Junie | *(no per-rule file)* | Bodies are merged into `.junie/AGENTS.md` via `sync-agent-guidelines`. |
 | Codex | `AGENTS.override.md` *(when `codex-rules-mode: agents-override`, the default)* | Codex native `.rules` files are Starlark command execution policy, not Markdown instruction snippets. Cyncia does not generate `.codex/rules`; instead, generic Markdown rule bodies are merged into root `AGENTS.override.md`, which Codex prefers over `AGENTS.md` in the same directory. Keep Codex command policy under `.codex/rules/*.rules` by hand. |
+
+Merged guideline outputs wrap each rule body under a generated
+`### <rule>.md` section. To keep source rule headings from escaping that
+section, Cyncia normalizes imported ATX headings so the highest heading inside
+each rule body becomes `####` and deeper headings are shifted relative to it.
+Headings inside fenced code blocks are left unchanged. Native per-rule outputs
+such as `.cursor/rules/*.mdc`, `.github/instructions/*.instructions.md`, and
+`.claude/rules/*.md` in `rule-files` mode preserve the authored heading levels.
 
 **Copilot `applyTo` resolution** (implemented in `scripts/copilot/sync-rules.{sh,ps1}`):
 

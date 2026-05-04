@@ -24,7 +24,7 @@ CLAUDE_RULES_SH="${REPO_ROOT}/scripts/claude/sync-rules.sh"
   [ -f "$TEST_OUT/CLAUDE.md" ]
   # Body of ra.md is inlined.
   grep -q '### `ra.md`' "$TEST_OUT/CLAUDE.md"
-  grep -q '# Rule A' "$TEST_OUT/CLAUDE.md"
+  grep -q '^#### Rule A' "$TEST_OUT/CLAUDE.md"
   # No @-imports in default mode.
   ! grep -q '^@\.claude/rules/' "$TEST_OUT/CLAUDE.md"
 

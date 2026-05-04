@@ -35,6 +35,10 @@ GitHub Copilot, VS Code, Junie, Codex) and the artifact types this repo syncs:
 | Junie | *(none)* | Merges rule bodies into `.junie/AGENTS.md` |
 | Codex | *(no `.codex/rules` file)* | Codex `.rules` files are Starlark command policy, not Markdown guidance; generic rule bodies are merged into root `AGENTS.override.md` when `codex-rules-mode: agents-override` |
 
+Merged guideline outputs normalize imported rule heading depth so rule body
+headings stay below the generated per-rule wrapper; native per-rule outputs
+preserve the authored heading levels.
+
 **Rule field mapping (as implemented by the scripts):**
 
 | Source (`rules/*.md`) | Cursor | Copilot | Claude / Junie merge | Codex |

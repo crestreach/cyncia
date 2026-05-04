@@ -68,7 +68,7 @@ Describe 'sync-all.ps1' {
       (Test-Path -LiteralPath (Join-Path $out 'AGENTS.override.md')) | Should -BeTrue
       $override = Get-Content -LiteralPath (Join-Path $out 'AGENTS.override.md') -Raw
       $override | Should -Match '## Project rules'
-      $override | Should -Match '# Rule A'
+      $override | Should -Match '(?m)^#### Rule A$'
       (Test-Path -LiteralPath (Join-Path $out '.cursor')) | Should -BeFalse
       (Test-Path -LiteralPath (Join-Path $out '.github')) | Should -BeFalse
     } finally {
@@ -108,6 +108,44 @@ Describe 'sync-all.ps1' {
       (Test-Path -LiteralPath (Join-Path $out 'AGENTS.override.md')) | Should -BeFalse
     } finally {
       if ($oldConf) { $env:CYNCIA_CONF = $oldConf } else { Remove-Item Env:CYNCIA_CONF -ErrorAction SilentlyContinue }
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
+  It 'normalizes embedded rule headings below the generated rule wrapper' {
+    $src = & $script:NewTestSourceFromFixture
+    $out = & $script:NewTestOutputDir
+    try {
+      Set-Content -LiteralPath (Join-Path $src 'rules\ra.md') -Encoding UTF8 -Value @'
+---
+description: Nested headings
+---
+
+## Top
+
+### Child
+
+#### Grandchild
+
+```pwsh
+# Not a heading
+```
+'@
+      & $script:SyncAllPs1 -InputRoot $src -OutputRoot $out -Tools 'claude,codex,junie'
+      foreach ($generated in @(
+          (Join-Path $out 'CLAUDE.md'),
+          (Join-Path $out 'AGENTS.override.md'),
+          (Join-Path $out '.junie\AGENTS.md')
+        )) {
+        $body = Get-Content -LiteralPath $generated -Raw
+        $body | Should -Match '(?m)^### `ra.md`$'
+        $body | Should -Match '(?m)^#### Top$'
+        $body | Should -Match '(?m)^##### Child$'
+        $body | Should -Match '(?m)^###### Grandchild$'
+        $body | Should -Match '(?m)^# Not a heading$'
+        $body | Should -Not -Match '(?m)^## Top$'
+      }
+    } finally {
       Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
     }
   }
@@ -251,7 +289,7 @@ Describe 'sync-all.ps1' {
       $j = Get-Content -LiteralPath (Join-Path $out '.junie\AGENTS.md') -Raw
       $j | Should -Match '## Project rules'
       $j | Should -Match '### `ra.md`'
-      $j | Should -Match 'Rule A'
+      $j | Should -Match '(?m)^#### Rule A$'
     } finally {
       Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
     }
