@@ -6,6 +6,7 @@
 .junie/
 .mcp.json
 .vscode/
+AGENTS.override.md
 examples/.vscode/
 CLAUDE.md
 _notes.md
