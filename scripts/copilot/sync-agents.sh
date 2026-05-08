@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sync agents from <agents_dir>/*.md to <output_root>/.github/agents/<name>.md.
+# Sync agents from <agents_dir>/*.md to <output_root>/.github/agents/<name>.agent.md.
 #
 # Usage:
 #   sync-agents.sh -i <agents_dir> -o <output_root> [--items name1,name2] [--clean] [--help]
@@ -24,7 +24,7 @@ fi
 
 copilot_agent() {
   local name="$1" src="$2"
-  local dst="$OUTPUT_DIR/.github/agents/$name.md"
+  local dst="$OUTPUT_DIR/.github/agents/$name.agent.md"
   mkdir -p "$(dirname "$dst")"
   # Drop generic 'mcp-servers' from frontmatter; translate to 'tools: ["name/*"]'.
   local existing_tools mcp
