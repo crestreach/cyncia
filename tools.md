@@ -11,9 +11,10 @@ GitHub Copilot, VS Code, Junie, Codex) and the artifact types this repo syncs:
 > https://code.visualstudio.com/docs/copilot/chat/mcp-servers). GitHub Copilot
 > Chat in VS Code reads the same file but does not own the format, so this
 > repo treats `vscode` and `copilot` as two separate tools: the `copilot` tool
-> writes Copilot-only files under `.github/`, and the `vscode` tool writes
-> `.vscode/mcp.json`. Other Copilot surfaces (JetBrains, Visual Studio, Eclipse,
-> Xcode) use their host IDE's own MCP configuration and are not generated here.
+> writes Copilot files under `.github/`, including workspace custom agents at
+> `.github/agents/*.agent.md`, and the `vscode` tool writes `.vscode/mcp.json`.
+> Other Copilot surfaces (JetBrains, Visual Studio, Eclipse, Xcode) use their
+> host IDE's own MCP configuration and are not generated here.
 
 ## Guidelines
 
@@ -63,7 +64,7 @@ preserve the authored heading levels.
 |---|---|---|
 | Cursor | `.cursor/agents/<name>.md` | file copy; `mcp-servers` frontmatter is stripped |
 | Claude Code | `.claude/agents/<name>.md` | file copy; `mcp-servers: "a, b"` → `mcpServers: [a, b]` |
-| GitHub Copilot | `.github/agents/<name>.md` | file copy; `mcp-servers: "a, b"` → `tools: ["a/*", "b/*"]` (errors if `tools:` is also set) |
+| GitHub Copilot | `.github/agents/<name>.agent.md` | file copy; `mcp-servers: "a, b"` → `tools: ["a/*", "b/*"]` (errors if `tools:` is also set) |
 | Junie | `.junie/agents/<name>.md` | file copy; `mcp-servers` frontmatter is stripped |
 | Codex | `.codex/agents/<name>.toml` | converts frontmatter `name` / `description` + Markdown body to Codex custom-agent TOML; `mcp-servers` is stripped |
 

@@ -51,8 +51,10 @@ teardown() {
 @test "copilot sync-agents: rewrites mcp-servers to tools list with /* suffix" {
   run bash "${REPO_ROOT}/scripts/copilot/sync-agents.sh" -i "$TEST_SRC/agents" -o "$TEST_OUT"
   [ "$status" -eq 0 ]
-  ! grep -q '^mcp-servers:' "$TEST_OUT/.github/agents/aside.md"
-  grep -q '^tools: \["context7/\*", "memory/\*"\]$' "$TEST_OUT/.github/agents/aside.md"
+  [ -f "$TEST_OUT/.github/agents/aside.agent.md" ]
+  [ ! -f "$TEST_OUT/.github/agents/aside.md" ]
+  ! grep -q '^mcp-servers:' "$TEST_OUT/.github/agents/aside.agent.md"
+  grep -q '^tools: \["context7/\*", "memory/\*"\]$' "$TEST_OUT/.github/agents/aside.agent.md"
 }
 
 @test "junie sync-agents: strips mcp-servers from frontmatter" {

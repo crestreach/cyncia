@@ -26,6 +26,8 @@ load test_helper
   [ -d "$TEST_OUT/.agents" ]
   [ -f "$TEST_OUT/CLAUDE.md" ]
   [ -f "$TEST_OUT/.github/copilot-instructions.md" ]
+  [ -f "$TEST_OUT/.github/agents/one.agent.md" ]
+  [ ! -f "$TEST_OUT/.github/agents/one.md" ]
   [ -f "$TEST_OUT/.junie/AGENTS.md" ]
   [ -f "$TEST_OUT/AGENTS.override.md" ]
   [ -f "$TEST_OUT/.codex/agents/one.toml" ]

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Sync agents from <agents_dir>/*.md to <output_root>/.github/agents/<name>.md.
+  Sync agents from <agents_dir>/*.md to <output_root>/.github/agents/<name>.agent.md.
 .PARAMETER InputPath
   Path to the agents directory (e.g. examples/agents).
 .PARAMETER OutputPath
@@ -33,7 +33,7 @@ if ($Clean) {
 
 $handler = {
   param($name, $src)
-  $dst = Join-Path $OutputDir ".github/agents/$name.md"
+  $dst = Join-Path $OutputDir ".github/agents/$name.agent.md"
   $existingTools = Get-FrontmatterField -Path $src -Key 'tools'
   $mcp = Get-FrontmatterField -Path $src -Key 'mcp-servers'
   if ($mcp -and $existingTools) {

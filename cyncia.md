@@ -46,7 +46,7 @@ Cyncia generates the per-tool files:
 | Source                  | Cursor                               | Claude Code                  | GitHub Copilot                                | VS Code             | JetBrains Junie                | Codex                         |
 | ----------------------- | ------------------------------------ | ---------------------------- | --------------------------------------------- | ------------------- | ------------------------------ | ----------------------------- |
 | `AGENTS.md`             | `AGENTS.md`                          | `CLAUDE.md`                  | `.github/copilot-instructions.md`             | —                   | `.junie/AGENTS.md`             | `AGENTS.md` (+ `AGENTS.override.md` when Codex rules are enabled) |
-| `agents/<n>.md`         | `.cursor/agents/<n>.md`              | `.claude/agents/<n>.md`      | `.github/agents/<n>.md`                       | —                   | `.junie/agents/<n>.md`         | `.codex/agents/<n>.toml`      |
+| `agents/<n>.md`         | `.cursor/agents/<n>.md`              | `.claude/agents/<n>.md`      | `.github/agents/<n>.agent.md`                 | —                   | `.junie/agents/<n>.md`         | `.codex/agents/<n>.toml`      |
 | `skills/<n>/`           | `.cursor/skills/<n>/`                | `.claude/skills/<n>/`        | `.github/skills/<n>/`                         | —                   | `.junie/skills/<n>/`           | `.agents/skills/<n>/`         |
 | `rules/<n>.md`          | `.cursor/rules/<n>.mdc`              | merged into `CLAUDE.md` *or* `.claude/rules/<n>.md` (configurable via `cyncia.conf`) | `.github/instructions/<n>.instructions.md`    | —                   | merged into `.junie/AGENTS.md` | merged into `AGENTS.override.md` (configurable) |
 | `mcp-servers/<n>.json`  | `.cursor/mcp.json`                   | `.mcp.json`                  | (uses VS Code's `.vscode/mcp.json`)           | `.vscode/mcp.json`  | stdout snippet                 | `.codex/config.toml`          |
@@ -114,6 +114,12 @@ path), the format details for each kind live in the sections below.
 | **Rule** | `.agent-config/rules/<name>.md` | `sync-rules` (Cursor/Copilot) or `sync-all` |
 | **MCP server** | `.agent-config/mcp-servers/<name>.json` | `sync-mcp` or `sync-all` (needs `jq` for Bash) |
 | **Guideline** edit | `.agent-config/AGENTS.md` | `sync-agent-guidelines` or `sync-all` |
+
+The generic source agent file remains `agents/<name>.md`; Cyncia rewrites only
+the generated native filename where a tool requires a convention. Copilot
+workspace custom agents are emitted as `.github/agents/<name>.agent.md` to match
+VS Code's custom-agent file convention. Claude Code, Cursor, and Junie use plain
+Markdown files in their agent folders, while Codex uses TOML files.
 
 ## Internal format: rules in `rules/`
 

@@ -330,7 +330,9 @@ Plain body.
 
   It 'copilot rewrites to tools list with /* suffix' {
     & (& $script:McpScript 'copilot' 'sync-agents.ps1') -InputPath (Join-Path $script:agentsSrc 'agents') -OutputPath $script:agentsOut
-    $body = Get-Content -LiteralPath (Join-Path $script:agentsOut '.github\agents\aside.md') -Raw
+    Join-Path $script:agentsOut '.github\agents\aside.agent.md' | Should -Exist
+    Join-Path $script:agentsOut '.github\agents\aside.md' | Should -Not -Exist
+    $body = Get-Content -LiteralPath (Join-Path $script:agentsOut '.github\agents\aside.agent.md') -Raw
     $body | Should -Match '(?m)^tools: \["context7/\*", "memory/\*"\]$'
     $body | Should -Not -Match '(?m)^mcp-servers:'
   }

@@ -24,7 +24,7 @@ The sync scripts write tool-specific files under your **output root**:
 
 | Generated from | Cursor | Claude Code | GitHub Copilot | VS Code | JetBrains Junie | Codex |
 |---|---|---|---|---|---|---|
-| `agents/<name>.md` | `.cursor/agents/<name>.md` | `.claude/agents/<name>.md` | `.github/agents/<name>.md` | *(no file)* | `.junie/agents/<name>.md` | `.codex/agents/<name>.toml` |
+| `agents/<name>.md` | `.cursor/agents/<name>.md` | `.claude/agents/<name>.md` | `.github/agents/<name>.agent.md` | *(no file)* | `.junie/agents/<name>.md` | `.codex/agents/<name>.toml` |
 | `skills/<name>/…` | `.cursor/skills/<name>/…` | `.claude/skills/<name>/…` | `.github/skills/<name>/…` | *(no file)* | `.junie/skills/<name>/…` | `.agents/skills/<name>/…` |
 | `rules/<name>.md` | `.cursor/rules/<name>.mdc` | *(not generated)* | `.github/instructions/<name>.instructions.md` | *(no file)* | *(not generated)* | `AGENTS.override.md` (when `codex-rules-mode: agents-override`) |
 | `mcp-servers/<name>.json` | `.cursor/mcp.json` | `.mcp.json` (project root) | *(no file — `.vscode/mcp.json` is written by the **vscode** tool)* | `.vscode/mcp.json` (+ `inputs[]`) | *(stdout snippet only — no file)* | `.codex/config.toml` (`mcp_servers` tables only) |
