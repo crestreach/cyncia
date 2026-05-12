@@ -1,7 +1,6 @@
 ---
 name: aside
 description: Answers a side question in an isolated context so the main chat stays clean. Use when the user has a tangential question, wants to explore something without polluting context, or asks to "run this as a side question". Good for research, lookups, "how does X work?", doc/spec checks, and comparing options. Read-only by default — does not modify files.
-model: inherit
 readonly: true
 ---
 
