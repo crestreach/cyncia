@@ -98,6 +98,9 @@ EOF
   cat > "$stage/$prefix/cyncia.md" <<EOF
 # cyncia full ref ($marker)
 EOF
+  cat > "$stage/$prefix/LICENSE" <<EOF
+MIT License ($marker)
+EOF
   ( cd "$stage" && tar -czf "$out" "$prefix" )
   rm -rf "$stage"
 }
@@ -149,6 +152,7 @@ run_install() {
   [ -f "$TEST_HOME/.cyncia/examples/AGENTS.md" ]
   [ -f "$TEST_HOME/.cyncia/README.md" ]
   [ -f "$TEST_HOME/.cyncia/cyncia.md" ]
+  [ -f "$TEST_HOME/.cyncia/LICENSE" ]
 
   # --no-bootstrap skipped both interactive steps.
   [ ! -d "$TEST_HOME/.agent-config/skills/sample-skill" ]
@@ -203,6 +207,7 @@ EOF
 later
 EOF
   echo "# full" > "$stage/cyncia-main/cyncia.md"
+  echo "MIT License ($marker)" > "$stage/cyncia-main/LICENSE"
   ( cd "$stage" && tar -czf "$out" cyncia-main )
 }
 
@@ -277,6 +282,7 @@ EOF
 later
 EOF
   echo "# full" > "$stage/cyncia-main/cyncia.md"
+  echo "# license" > "$stage/cyncia-main/LICENSE"
   ( cd "$stage" && tar -czf "$TEST_HOME/snap2.tgz" cyncia-main )
 
   export FAKE_TARBALL="$TEST_HOME/snap2.tgz"
@@ -331,6 +337,24 @@ EOF
   [[ "$output" == *"examples missing from snapshot"* ]]
 }
 
+@test "install: errors if snapshot is missing LICENSE" {
+  # Tarball with every required entry except LICENSE.
+  local stage="$TAR_SRC/nolicense"
+  mkdir -p "$stage/cyncia-main/scripts" "$stage/cyncia-main/skills" \
+           "$stage/cyncia-main/examples"
+  cp "${REPO_ROOT}/scripts/sync-all.sh" "$stage/cyncia-main/scripts/sync-all.sh"
+  echo "# example" > "$stage/cyncia-main/examples/AGENTS.md"
+  echo "# r" > "$stage/cyncia-main/README.md"
+  echo "# c" > "$stage/cyncia-main/cyncia.md"
+  ( cd "$stage" && tar -czf "$TEST_HOME/nolicense.tgz" cyncia-main )
+  export FAKE_TARBALL="$TEST_HOME/nolicense.tgz"
+
+  run_install --no-bootstrap
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"LICENSE missing from snapshot"* ]]
+}
+
 @test "install: --bootstrap runs sync-all and produces tool outputs" {
   # Use a real fixture-flavored snapshot so sync-all has something to sync.
   # The tarball must look like the real repo: scripts/, skills/, examples/.
@@ -342,6 +366,7 @@ EOF
   cp -R "${REPO_ROOT}/examples" "$stage/cyncia-main/examples"
   echo "# README ## After installing\n1. ok\n## Usage" > "$stage/cyncia-main/README.md"
   echo "# full" > "$stage/cyncia-main/cyncia.md"
+  echo "# license" > "$stage/cyncia-main/LICENSE"
   ( cd "$stage" && tar -czf "$TEST_HOME/real.tgz" cyncia-main )
   export FAKE_TARBALL="$TEST_HOME/real.tgz"
 

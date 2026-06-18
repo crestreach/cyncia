@@ -11,10 +11,10 @@
 #      with empty agents/, skills/, rules/, mcp-servers/ subdirectories and a
 #      stub AGENTS.md (only if AGENTS.md does not already exist).
 #   2. Downloads a snapshot of the cyncia repository (default ref: main) and
-#      copies its scripts/, skills/, examples/, README.md, and cyncia.md into
-#      the cyncia directory (default: .cyncia/). Existing scripts/, skills/,
-#      and examples/ trees in that directory are replaced; README.md and
-#      cyncia.md are overwritten.
+#      copies its scripts/, skills/, examples/, README.md, cyncia.md, and
+#      LICENSE into the cyncia directory (default: .cyncia/). Existing
+#      scripts/, skills/, and examples/ trees in that directory are replaced;
+#      README.md, cyncia.md, and LICENSE are overwritten.
 #   3. Optionally copies (or updates) skills from .cyncia/skills/ into
 #      <config-dir>/skills/ — interactive prompt defaults to "yes"; pass
 #      --no-bootstrap to skip without asking. Without a TTY (e.g. 'curl |
@@ -153,7 +153,7 @@ if [[ -z "$SRC" ]]; then
   exit 1
 fi
 
-for entry in scripts skills examples README.md cyncia.md; do
+for entry in scripts skills examples README.md cyncia.md LICENSE; do
   if [[ ! -e "$SRC/$entry" ]]; then
     echo "error: $entry missing from snapshot $REPO@$REF" >&2
     exit 1
@@ -167,15 +167,16 @@ cp -R "$SRC/skills"   "$CYNCIA_DIR/skills"
 cp -R "$SRC/examples" "$CYNCIA_DIR/examples"
 cp    "$SRC/README.md" "$CYNCIA_DIR/README.md"
 cp    "$SRC/cyncia.md" "$CYNCIA_DIR/cyncia.md"
+cp    "$SRC/LICENSE"   "$CYNCIA_DIR/LICENSE"
 
 # Re-assert exec bit on shell scripts (tar usually preserves this, but some
 # transports — e.g. zip mirrors — strip it).
 find "$CYNCIA_DIR/scripts" -type f -name '*.sh' -exec chmod +x {} +
 
 if [[ "$CYNCIA_EXISTED" == "yes" ]]; then
-  echo "    refreshed $CYNCIA_DIR/{scripts,skills,examples,README.md,cyncia.md}"
+  echo "    refreshed $CYNCIA_DIR/{scripts,skills,examples,README.md,cyncia.md,LICENSE}"
 else
-  echo "    wrote $CYNCIA_DIR/{scripts,skills,examples,README.md,cyncia.md}"
+  echo "    wrote $CYNCIA_DIR/{scripts,skills,examples,README.md,cyncia.md,LICENSE}"
 fi
 
 # --- 2b. Record installed version -------------------------------------------

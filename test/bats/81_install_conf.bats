@@ -40,6 +40,7 @@ EOF
 later
 EOF
   echo "# full" > "$stage/cyncia-main/cyncia.md"
+  echo "# license" > "$stage/cyncia-main/LICENSE"
   ( cd "$stage" && tar -czf "$TEST_HOME/snap.tgz" cyncia-main )
   export FAKE_TARBALL="$TEST_HOME/snap.tgz"
 }

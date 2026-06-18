@@ -469,11 +469,11 @@ In order, the script:
    your guidelines.
 2. **Downloads a snapshot** of cyncia from
    `https://github.com/<repo>/archive/<ref>.tar.gz` (default `crestreach/cyncia`
-   @ `main`) and copies `scripts/`, `skills/`, `examples/`, `README.md`, and
-   `cyncia.md` into `<cyncia-dir>/` (default `.cyncia/`). Existing `scripts/`,
-   `skills/`, and `examples/` trees in `<cyncia-dir>/` are removed first so
-   deletions upstream propagate; `README.md` and `cyncia.md` are overwritten
-   in place.
+   @ `main`) and copies `scripts/`, `skills/`, `examples/`, `README.md`,
+   `cyncia.md`, and `LICENSE` into `<cyncia-dir>/` (default `.cyncia/`).
+   Existing `scripts/`, `skills/`, and `examples/` trees in `<cyncia-dir>/`
+   are removed first so deletions upstream propagate; `README.md`,
+   `cyncia.md`, and `LICENSE` are overwritten in place.
 3. **Records the installed version** to `<cyncia-dir>/VERSION`. For an
    explicit `--ref` (tag or non-default branch) the file contains that ref
    verbatim. For the default `main` branch the installer best-effort queries
