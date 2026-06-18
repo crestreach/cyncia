@@ -5,7 +5,8 @@ description: Delegates a side question to the `aside` subagent with a properly c
 
 # Delegate to the `aside` Subagent
 
-The user has an `aside` subagent at `~/.cursor/agents/aside.md` that answers side questions in an isolated context. Only its final message returns here, so intermediate tool output does not pollute this chat.
+The user has an `aside` subagent at `~/.cursor/agents/aside.md` that answers side questions in an isolated context.
+Only its final message returns here, so intermediate tool output does not pollute this chat.
 
 This skill covers **how to invoke `aside` with a proper brief** instead of forwarding the user's raw words.
 
@@ -14,7 +15,10 @@ This skill covers **how to invoke `aside` with a proper brief** instead of forwa
 Apply when the user:
 
 - Says "ask aside", "side question", "delegate this", "run in a subagent", or similar natural-language cues.
-- Types `/aside <question>` at the start of a message. Despite the slash, this is **not** a hard system-level bypass — the message is routed to you (the main agent), and you should delegate. Treat it as an explicit cue to invoke the subagent. You may (and should) still enrich the prompt with conversation context per the recipe below.
+- Types `/aside <question>` at the start of a message.
+  Despite the slash, this is **not** a hard system-level bypass — the message is routed to you (the main agent), and you should delegate.
+  Treat it as an explicit cue to invoke the subagent.
+  You may (and should) still enrich the prompt with conversation context per the recipe below.
 - Asks something clearly tangential to the current work (research, lookups, comparisons, "how does X work?") that would bloat the main context.
 
 Do **not** apply when:
@@ -24,11 +28,13 @@ Do **not** apply when:
 
 ## How to invoke
 
-Use the Task tool with `subagent_type: "aside"` (or the equivalent subagent invocation in this session). Compose a brief; do not forward the raw question.
+Use the Task tool with `subagent_type: "aside"` (or the equivalent subagent invocation in this session).
+Compose a brief; do not forward the raw question.
 
 ## Prompt recipe
 
-Build the subagent prompt with these sections, in order. Omit any that don't apply; do not pad.
+Build the subagent prompt with these sections, in order.
+Omit any that don't apply; do not pad.
 
 ```
 ## Question
@@ -55,7 +61,8 @@ snippets.>
 
 - **Include**: decisions made, files touched, errors hit, constraints stated, project-specific vocabulary.
 - **Exclude**: earlier unrelated tangents, your own prior reasoning, tool output transcripts, anything trivially rediscovered by reading a file.
-- When in doubt, point to a path instead of pasting content. Summarize long histories.
+- When in doubt, point to a path instead of pasting content.
+  Summarize long histories.
 
 ## Example
 
@@ -88,6 +95,7 @@ For self-contained research questions ("what's the difference between X and Y?")
 
 ## After the subagent returns
 
-- Pass its final message through to the user. Add at most a one-line note.
+- Pass its final message through to the user.
+  Add at most a one-line note.
 - Do **not** re-explain or expand the answer — that defeats context isolation.
 - If it said it lacked information, ask the user (or offer a follow-up delegation with more context) rather than answering from memory.

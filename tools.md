@@ -2,9 +2,7 @@
 
 **Doc snapshot (UTC 2026-05-04):** see [`tool-versions.md`](tool-versions.md).
 
-This is a compact reference for the target tools (Cursor, Claude Code,
-GitHub Copilot, VS Code, Junie, Codex) and the artifact types this repo syncs:
-**guidelines**, **rules**, **skills**, **agents**, and **MCP servers**.
+This is a compact reference for the target tools (Cursor, Claude Code, GitHub Copilot, VS Code, Junie, Codex) and the artifact types this repo syncs: **guidelines**, **rules**, **skills**, **agents**, and **MCP servers**.
 
 > **Note on VS Code vs GitHub Copilot.** `.vscode/mcp.json` is a VS Code
 > configuration file (see
@@ -36,9 +34,7 @@ GitHub Copilot, VS Code, Junie, Codex) and the artifact types this repo syncs:
 | Junie | *(none)* | Merges rule bodies into `.junie/AGENTS.md` |
 | Codex | *(no `.codex/rules` file)* | Codex `.rules` files are Starlark command policy, not Markdown guidance; generic rule bodies are merged into root `AGENTS.override.md` when `codex-rules-mode: agents-override` |
 
-Merged guideline outputs normalize imported rule heading depth so rule body
-headings stay below the generated per-rule wrapper; native per-rule outputs
-preserve the authored heading levels.
+Merged guideline outputs normalize imported rule heading depth so rule body headings stay below the generated per-rule wrapper; native per-rule outputs preserve the authored heading levels.
 
 **Rule field mapping (as implemented by the scripts):**
 
@@ -71,9 +67,8 @@ preserve the authored heading levels.
 ## MCP servers
 
 Generic source: one JSON file per server under `<source_root>/mcp-servers/<name>.json`.
-Body is the per-server config object (no `mcpServers` wrapper). Secret tokens use
-the `${secret:NAME}` (required) or `${secret:NAME?optional}` (safe-empty) syntax
-and are translated per tool.
+Body is the per-server config object (no `mcpServers` wrapper).
+Secret tokens use the `${secret:NAME}` (required) or `${secret:NAME?optional}` (safe-empty) syntax and are translated per tool.
 
 | Tool | Output path | Container key | Secret translation |
 |---|---|---|---|
@@ -84,9 +79,7 @@ and are translated per tool.
 | Junie | *(no file)* | `mcpServers` | printed to stdout for manual paste; tokens passed through verbatim (user edits secrets in place) |
 | Codex | `.codex/config.toml` | `[mcp_servers.<name>]` | exact env secret values become `env_vars`; bearer auth headers become `bearer_token_env_var`; exact secret header values become `env_http_headers` |
 
-The MCP step runs only when `<source_root>/mcp-servers/` exists. For Cursor,
-Claude Code, and VS Code, `sync-mcp` replaces the target file; `--clean` with
-an empty filter removes the target instead. For Codex, `sync-mcp` updates only
-`mcp_servers` tables in `.codex/config.toml` and preserves unrelated Codex
-settings; `--clean` removes all existing `mcp_servers` tables before appending
-the selected generated servers. `jq` is required for the Bash scripts.
+The MCP step runs only when `<source_root>/mcp-servers/` exists.
+For Cursor, Claude Code, and VS Code, `sync-mcp` replaces the target file; `--clean` with an empty filter removes the target instead.
+For Codex, `sync-mcp` updates only `mcp_servers` tables in `.codex/config.toml` and preserves unrelated Codex settings; `--clean` removes all existing `mcp_servers` tables before appending the selected generated servers.
+`jq` is required for the Bash scripts.

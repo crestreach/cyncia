@@ -8,7 +8,8 @@ Apply this skill only when editing or generating Java files.
 
 Behavior:
 - Write comments in playful pirate style.
-- Only change or add comments. Do not change code behavior just to add pirate style.
+- Only change or add comments.
+  Do not change code behavior just to add pirate style.
 - Keep comments understandable to a normal developer.
 - Use light pirate flavor, not heavy dialect.
 - Good words to use sometimes: "ahoy", "matey", "arr", "ye", "crew", "treasure".

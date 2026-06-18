@@ -4,11 +4,7 @@
 
 Website: <https://www.cyncia.net>
 
-Cyncia takes a single, tool-agnostic source tree (guidelines, agents, skills,
-rules, MCP servers) and generates the per-tool layouts that
-**Cursor**, **Claude Code**, **GitHub Copilot**, **VS Code**,
-**JetBrains Junie**, and **Codex** expect — file paths, file formats, and frontmatter keys
-all translated for you.
+Cyncia takes a single, tool-agnostic source tree (guidelines, agents, skills, rules, MCP servers) and generates the per-tool layouts that **Cursor**, **Claude Code**, **GitHub Copilot**, **VS Code**, **JetBrains Junie**, and **Codex** expect — file paths, file formats, and frontmatter keys all translated for you.
 
 > Full reference (formats, frontmatter, MCP secret tokens, per-tool field map,
 > edge cases): **[`cyncia.md`](cyncia.md)**.
@@ -38,37 +34,25 @@ Cyncia generates the rest:
 
 Along the way it also rewrites **frontmatter** to each tool's native shape:
 
-- Generic rule keys (`applies-to`, `always-apply`, `description`) →
-  `globs` / `alwaysApply` (Cursor) and `applyTo` (Copilot).
+- Generic rule keys (`applies-to`, `always-apply`, `description`) → `globs` / `alwaysApply` (Cursor) and `applyTo` (Copilot).
 - Generic skill key `applies-to` → `paths` for Claude; stripped elsewhere.
-- Generic agent key `mcp-servers` → `mcpServers: [...]` (Claude),
-  `tools: ["a/*", ...]` (Copilot); stripped for Cursor and Junie.
-- MCP secret tokens (`${secret:NAME}`, `${secret:NAME?optional}`) →
-  `${env:NAME}` (Cursor), `${NAME}` / `${NAME:-}` (Claude),
-  `${input:NAME}` + `inputs[]` entry (VS Code), and Codex environment
-  forwarding / bearer-token env vars where Codex documents those fields.
+- Generic agent key `mcp-servers` → `mcpServers: [...]` (Claude), `tools: ["a/*", ...]` (Copilot); stripped for Cursor and Junie.
+- MCP secret tokens (`${secret:NAME}`, `${secret:NAME?optional}`) → `${env:NAME}` (Cursor), `${NAME}` / `${NAME:-}` (Claude), `${input:NAME}` + `inputs[]` entry (VS Code), and Codex environment forwarding / bearer-token env vars where Codex documents those fields.
 
-Codex note: Codex's native `.rules` files are Starlark command-approval
-policies, not Markdown instruction files. By default Cyncia merges generic
-`rules/*.md` into root `AGENTS.override.md`, which Codex prefers over
-`AGENTS.md` in the same directory. Keep Codex command policy under
-`.codex/rules/*.rules` by hand.
+Codex note: Codex's native `.rules` files are Starlark command-approval policies, not Markdown instruction files.
+By default Cyncia merges generic `rules/*.md` into root `AGENTS.override.md`, which Codex prefers over `AGENTS.md` in the same directory.
+Keep Codex command policy under `.codex/rules/*.rules` by hand.
 
-When rule bodies are merged into a larger guideline file (`CLAUDE.md`,
-`.junie/AGENTS.md`, or `AGENTS.override.md`), Cyncia shifts the imported rule's
-ATX headings so the highest rule heading starts under the generated rule-file
-section. Standalone rule files keep their original heading levels.
+When rule bodies are merged into a larger guideline file (`CLAUDE.md`, `.junie/AGENTS.md`, or `AGENTS.override.md`), Cyncia shifts the imported rule's ATX headings so the highest rule heading starts under the generated rule-file section.
+Standalone rule files keep their original heading levels.
 
 ## Dependencies
 
 - **Bash 4+** (macOS/Linux/WSL/Git Bash) — for `scripts/**/*.sh`.
 - **PowerShell 5.1+** or **PowerShell 7+** (Windows / cross-platform) — for `scripts/**/*.ps1`.
-- **`jq` 1.6+** — required only by the MCP sync (`sync-mcp.{sh,ps1}` and the
-  MCP step of `sync-all`); install with `brew install jq` /
-  `apt-get install jq` / `winget install jqlang.jq`.
+- **`jq` 1.6+** — required only by the MCP sync (`sync-mcp.{sh,ps1}` and the MCP step of `sync-all`); install with `brew install jq` / `apt-get install jq` / `winget install jqlang.jq`.
 - **Git** — not required by the installer or by sync time.
-- Standard POSIX utilities (`sed`, `awk`, `grep`, `find`) — already present
-  on macOS, Linux, WSL, and Git Bash.
+- Standard POSIX utilities (`sed`, `awk`, `grep`, `find`) — already present on macOS, Linux, WSL, and Git Bash.
 
 ## Install
 
@@ -78,13 +62,9 @@ From your project root, run the installer:
 curl -fsSL https://raw.githubusercontent.com/crestreach/cyncia/main/install/install.sh | bash
 ```
 
-The installer creates `.agent-config/` (with empty `agents/`, `skills/`, `rules/`,
-`mcp-servers/` and a stub `AGENTS.md`), downloads a snapshot of cyncia into
-`.cyncia/`, and prompts whether to copy the bundled skills into
-`.agent-config/skills/` and run `sync-all` immediately. Both prompts default
-to **yes** — pressing Enter (or running with no TTY, as under `curl | bash`)
-accepts; pass `--no-bootstrap` to decline both. Re-running it later
-**updates** the installed cyncia files under `.cyncia/`.
+The installer creates `.agent-config/` (with empty `agents/`, `skills/`, `rules/`, `mcp-servers/` and a stub `AGENTS.md`), downloads a snapshot of cyncia into `.cyncia/`, and prompts whether to copy the bundled skills into `.agent-config/skills/` and run `sync-all` immediately.
+Both prompts default to **yes** — pressing Enter (or running with no TTY, as under `curl | bash`) accepts; pass `--no-bootstrap` to decline both.
+Re-running it later **updates** the installed cyncia files under `.cyncia/`.
 
 Common parameters (pass after `bash -s --`):
 
@@ -104,21 +84,19 @@ curl -fsSL https://raw.githubusercontent.com/crestreach/cyncia/main/install/inst
   | bash -s -- --ref v1.0.0 --config-dir my-config --cyncia-dir vendor/cyncia --bootstrap
 ```
 
-Full installer reference (all flags, env vars, behavior on re-run): see
-[`cyncia.md` → Install](cyncia.md#install).
+Full installer reference (all flags, env vars, behavior on re-run): see [`cyncia.md` → Install](cyncia.md#install).
 
 ## After installing
 
-1. **Create a source tree** at `.agent-config/` (*only if skipped during the
-   installer run*). Only `AGENTS.md` is required; every subfolder is optional:
+1. **Create a source tree** at `.agent-config/` (*only if skipped during the installer run*).
+   Only `AGENTS.md` is required; every subfolder is optional:
 
    ```bash
    mkdir -p .agent-config/skills
    cp AGENTS.md .agent-config/AGENTS.md
    ```
 
-2. **Install the `agent-conf-sync` skill** into your assistant so it can run
-   syncs from natural language (*only if skipped during the installer run*).
+2. **Install the `agent-conf-sync` skill** into your assistant so it can run syncs from natural language (*only if skipped during the installer run*).
    Copy it into your source tree, then sync:
 
    ```bash
@@ -132,11 +110,8 @@ Full installer reference (all flags, env vars, behavior on re-run): see
    > then run `.cyncia/scripts/sync-all.sh -i .agent-config -o .` to install
    > the skill into every tool's native layout.
 
-3. **(Optional, but recommended) Enable Cyncia's automatic agent behavior.** Paste the block
-   below into **your** project's `AGENTS.md` (the source one, under
-   `.agent-config/`) and re-run the sync. AI assistants will then know to
-   author new rules/skills/agents/MCP servers under `.agent-config/` and
-   re-run `sync-all` afterwards.
+3. **(Optional, but recommended) Enable Cyncia's automatic agent behavior.** Paste the block below into **your** project's `AGENTS.md` (the source one, under `.agent-config/`) and re-run the sync.
+   AI assistants will then know to author new rules/skills/agents/MCP servers under `.agent-config/` and re-run `sync-all` afterwards.
 
     > **Before pasting:** if you've changed the default locations — `.cyncia/`
     > for installed cyncia files and `.agent-config/` for the authoring root —
@@ -161,8 +136,7 @@ Full installer reference (all flags, env vars, behavior on re-run): see
 
 ## Usage
 
-Once the `agent-conf-sync` skill is installed (step 2 above), the easiest way
-is to just **ask your AI assistant in plain language**:
+Once the `agent-conf-sync` skill is installed (step 2 above), the easiest way is to just **ask your AI assistant in plain language**:
 
 - *"sync agent config"*
 - *"regenerate Cursor rules"*
@@ -190,9 +164,8 @@ Windows / PowerShell:
 .\.cyncia\scripts\sync-all.ps1 -InputRoot .agent-config -OutputRoot $PWD
 ```
 
-A working source tree lives in [`examples/`](examples/) (and the one this repo
-itself uses lives in [`.agent-config/`](.agent-config/)). Point `sync-all` at
-either:
+A working source tree lives in [`examples/`](examples/) (and the one this repo itself uses lives in [`.agent-config/`](.agent-config/)).
+Point `sync-all` at either:
 
 ```bash
 .cyncia/scripts/sync-all.sh -i .cyncia/examples -o /tmp/demo-out
@@ -225,10 +198,8 @@ your-repo/
 
 ## Configuration (`.cyncia/cyncia.conf`)
 
-The installer creates `.cyncia/cyncia.conf` with sensible defaults and leaves
-it alone on subsequent runs. When a new version of cyncia introduces a new
-property the installer prompts you to add it (default **yes**); when a
-property is no longer supported it prompts to remove it (default **no**).
+The installer creates `.cyncia/cyncia.conf` with sensible defaults and leaves it alone on subsequent runs.
+When a new version of cyncia introduces a new property the installer prompts you to add it (default **yes**); when a property is no longer supported it prompts to remove it (default **no**).
 
 Currently supported properties:
 
@@ -243,9 +214,7 @@ If the file or a property is missing, sync scripts use the built-in default.
 
 ## More
 
-- **Detailed reference** — formats, frontmatter, MCP secret tokens,
-  per-tool field map, scripts and flags, edge cases:
-  **[`cyncia.md`](cyncia.md)**.
+- **Detailed reference** — formats, frontmatter, MCP secret tokens, per-tool field map, scripts and flags, edge cases: **[`cyncia.md`](cyncia.md)**.
 - **Per-tool field cheat sheet** — [`tools.md`](tools.md).
 - **Pinned tool versions / doc snapshot** — [`tool-versions.md`](tool-versions.md).
 

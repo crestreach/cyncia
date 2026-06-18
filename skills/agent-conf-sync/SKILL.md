@@ -5,11 +5,13 @@ description: Runs the cyncia batch script (`sync-all`) to regenerate Cursor, Cla
 
 # agent-conf-sync
 
-This skill invokes **`scripts/sync-all.sh`** (macOS/Linux/Git Bash) or **`scripts/sync-all.ps1`** (Windows PowerShell) from the `cyncia` repo. The user describes what they want in plain language; you pick the right script, resolve paths, infer flags, run it, and summarize the result.
+This skill invokes **`scripts/sync-all.sh`** (macOS/Linux/Git Bash) or **`scripts/sync-all.ps1`** (Windows PowerShell) from the `cyncia` repo.
+The user describes what they want in plain language; you pick the right script, resolve paths, infer flags, run it, and summarize the result.
 
 ## Source tree format (`<source_root>`)
 
-A source root must contain `AGENTS.md`. It may optionally contain any of these folders; each is independent and missing folders are skipped with a console note:
+A source root must contain `AGENTS.md`.
+It may optionally contain any of these folders; each is independent and missing folders are skipped with a console note:
 
 | Folder | One per | Purpose |
 |---|---|---|
@@ -31,13 +33,17 @@ For each selected tool, `sync-all` writes:
 | `junie` | `.junie/AGENTS.md` (AGENTS + rules merged), `.junie/{agents,skills}/` |
 | `codex` | `AGENTS.md` (copy), `AGENTS.override.md` when `codex-rules-mode=agents-override`, `.codex/agents/*.toml`, `.agents/skills/`, `.codex/config.toml` `mcp_servers` tables when `codex-sync-mcp=true` |
 
-`sync-agent-guidelines` always emits the **full** `AGENTS.md` / `CLAUDE.md` / `.junie/AGENTS.md` — `--items` does not trim it. Claude and Junie have no per-rule files by default (rules are appended into the guidelines file). Codex does not generate `.codex/rules` from Cyncia Markdown rules because Codex `.rules` files are Starlark command policy; by default, Codex Markdown rule bodies are merged into root `AGENTS.override.md` instead.
+`sync-agent-guidelines` always emits the **full** `AGENTS.md` / `CLAUDE.md` / `.junie/AGENTS.md` — `--items` does not trim it.
+Claude and Junie have no per-rule files by default (rules are appended into the guidelines file).
+Codex does not generate `.codex/rules` from Cyncia Markdown rules because Codex `.rules` files are Starlark command policy; by default, Codex Markdown rule bodies are merged into root `AGENTS.override.md` instead.
 
-This skill is only about **invocation and reporting**. For source-format details (rule frontmatter fields, secret-token translation, agent ↔ MCP linkage) see the upstream `README.md`.
+This skill is only about **invocation and reporting**.
+For source-format details (rule frontmatter fields, secret-token translation, agent ↔ MCP linkage) see the upstream `README.md`.
 
 ## When to apply
 
-Apply when the user wants to (re)generate tool-specific AI-assistant config from a single generic source tree. Trigger phrases include:
+Apply when the user wants to (re)generate tool-specific AI-assistant config from a single generic source tree.
+Trigger phrases include:
 
 - "sync all", "run sync-all", "sync agent config", "sync the config"
 - "regenerate / update the rules / skills / agents / guidelines / mcp / `AGENTS.override.md`"
@@ -46,7 +52,8 @@ Apply when the user wants to (re)generate tool-specific AI-assistant config from
 - "sync for Cursor and Claude", "only Copilot", "only Codex", "skip Junie"
 - "clean sync", "prune stale files", "mirror deletions"
 
-Do **not** apply when the user is asking about the *format* of rules/skills/agents, or editing source files. For that, point them to `README.md`.
+Do **not** apply when the user is asking about the *format* of rules/skills/agents, or editing source files.
+For that, point them to `README.md`.
 
 ## Step 1: Detect the OS and shell
 
@@ -58,7 +65,8 @@ Pick the entrypoint based on the shell you'll actually execute in:
 | macOS, Linux, BSD | `scripts/sync-all.sh` | `-i`, `-o`, `--tools`, `--items`, `--clean` |
 | Git Bash / WSL on Windows | `scripts/sync-all.sh` (prefer Bash) | same as Unix |
 
-Detect with: `$env:OS -eq "Windows_NT"` in PowerShell; `uname` in Bash. Do **not** assume Unix just because the repo is cross-platform — use what the current session runs.
+Detect with: `$env:OS -eq "Windows_NT"` in PowerShell; `uname` in Bash.
+Do **not** assume Unix just because the repo is cross-platform — use what the current session runs.
 
 ## Step 2: Locate the script root (`CONFIG_SYNC_ROOT`)
 
@@ -75,7 +83,9 @@ Use **absolute paths** when invoking the script.
 
 ### Input root — `-i` / `-InputRoot` (required)
 
-The directory that contains `AGENTS.md` and optionally any of `agents/`, `skills/`, `rules/`, `mcp-servers/` (see [Source tree format](#source-tree-format-source_root) above). Each folder is independent — `sync-all` skips the corresponding subscript (with a console note) when its source dir is absent. Only `AGENTS.md` is mandatory; if it is missing, `sync-all` exits with an error.
+The directory that contains `AGENTS.md` and optionally any of `agents/`, `skills/`, `rules/`, `mcp-servers/` (see [Source tree format](#source-tree-format-source_root) above).
+Each folder is independent — `sync-all` skips the corresponding subscript (with a console note) when its source dir is absent.
+Only `AGENTS.md` is mandatory; if it is missing, `sync-all` exits with an error.
 
 Mapping from user phrasing:
 
@@ -84,15 +94,18 @@ Mapping from user phrasing:
 - "from my source", "from `<path>`" → that path
 - "in place", "same as output" → same path as output root
 
-If nothing is stated, look at the workspace: presence of `AGENTS.md` + `agents/` + `skills/` + `rules/` at some root indicates it's the source. Ask if unclear.
+If nothing is stated, look at the workspace: presence of `AGENTS.md` + `agents/` + `skills/` + `rules/` at some root indicates it's the source.
+Ask if unclear.
 
 ### Output root — `-o` / `-OutputRoot` (required)
 
-The project root where `.cursor/`, `.claude/`, `.github/`, `.junie/`, `.codex/`, `.agents/`, the root `AGENTS.md` copy, and root `AGENTS.override.md` are written. Usually the consumer project root, or this repo's root when regenerating its own outputs.
+The project root where `.cursor/`, `.claude/`, `.github/`, `.junie/`, `.codex/`, `.agents/`, the root `AGENTS.md` copy, and root `AGENTS.override.md` are written.
+Usually the consumer project root, or this repo's root when regenerating its own outputs.
 
 ### `--tools` / `-Tools` (optional; default from config)
 
-Comma-separated subset of `cursor,claude,copilot,vscode,junie,codex` (case-insensitive, no spaces). If omitted, `sync-all` uses `default-tools` from `.cyncia/cyncia.conf`; if that property is missing, the built-in default is all six supported tools.
+Comma-separated subset of `cursor,claude,copilot,vscode,junie,codex` (case-insensitive, no spaces).
+If omitted, `sync-all` uses `default-tools` from `.cyncia/cyncia.conf`; if that property is missing, the built-in default is all six supported tools.
 
 | Phrase | Value |
 |--------|-------|
@@ -108,7 +121,8 @@ Synonyms: **cursor** ← "Cursor"; **claude** ← "Claude", "Claude Code"; **cop
 
 ### `--items` / `-Items` (optional)
 
-Single comma-separated list of **basenames without extension** (e.g. `delegate-to-aside`, `commit-style`). Applied to agents, skills, and rules together.
+Single comma-separated list of **basenames without extension** (e.g. `delegate-to-aside`, `commit-style`).
+Applied to agents, skills, and rules together.
 
 | Phrase | Value |
 |--------|-------|
@@ -116,13 +130,19 @@ Single comma-separated list of **basenames without extension** (e.g. `delegate-t
 | "just `foo` and `bar`" | `foo,bar` |
 | "full sync", "all of them", no item mentioned | omit flag |
 
-**Caveat:** `--items` does not trim the guidelines merge. `sync-agent-guidelines` always emits the full `AGENTS.md` + merged rules for Claude/Junie/Codex. Mention this in the report if the user expected partial guidelines.
+**Caveat:** `--items` does not trim the guidelines merge.
+`sync-agent-guidelines` always emits the full `AGENTS.md` + merged rules for Claude/Junie/Codex.
+Mention this in the report if the user expected partial guidelines.
 
 ### `--clean` / `-Clean` (optional; default: off)
 
 Set when the user asks to **remove stale outputs**, **prune**, **mirror source deletions**, **empty generated dirs first**, or says "clean sync".
 
-**Warning — data loss risk:** `--clean` empties the entire output directory for **every** sync step on **every** selected tool before writing: `.cursor/{agents,rules,skills}`, `.claude/{agents,skills}`, `.github/{agents,instructions,skills}`, `.junie/{agents,skills}`, `.codex/agents`, and `.agents/skills`. Any hand-authored files in those dirs are deleted. This is especially risky for `.github/` since users often keep unrelated content there (workflows live in `.github/workflows/` — not wiped — but a user might have put manual instruction files in `.github/instructions/`). Codex MCP clean is narrower: it removes/replaces only `mcp_servers` sections in `.codex/config.toml`, preserving unrelated Codex config. Flag clean risk in your pre-run note whenever `-Clean` is inferred, and name the specific dirs or Codex config sections affected by the `--tools` selection.
+**Warning — data loss risk:** `--clean` empties the entire output directory for **every** sync step on **every** selected tool before writing: `.cursor/{agents,rules,skills}`, `.claude/{agents,skills}`, `.github/{agents,instructions,skills}`, `.junie/{agents,skills}`, `.codex/agents`, and `.agents/skills`.
+Any hand-authored files in those dirs are deleted.
+This is especially risky for `.github/` since users often keep unrelated content there (workflows live in `.github/workflows/` — not wiped — but a user might have put manual instruction files in `.github/instructions/`).
+Codex MCP clean is narrower: it removes/replaces only `mcp_servers` sections in `.codex/config.toml`, preserving unrelated Codex config.
+Flag clean risk in your pre-run note whenever `-Clean` is inferred, and name the specific dirs or Codex config sections affected by the `--tools` selection.
 
 ## Step 4: Validate and run
 
@@ -167,15 +187,21 @@ On non-zero exit, surface the error and suggest fixes (missing dirs, unknown too
 
 Reply with a **compact** summary, not the full log:
 
-1. **Command** — one line: OS/shell, script path, effective `-i`/`-o`/`--tools`/`--items`/`--clean`. If `--tools` was omitted and `default-tools` is visible, mention the configured default that was used.
-2. **Deletions / clean** — list paths from log lines matching `cleaned` / `removed` / `Clean`. If `--clean` was not used, state that no clean step ran (overwrite in place only).
-3. **Generated / updated** — from lines with `->` (e.g. `cursor agent ->`, `copilot skill ->`) and `== tool ==` headers. Group by tool. Call out `AGENTS.md`, `AGENTS.override.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.junie/AGENTS.md`, `.codex/config.toml`, and `.codex/agents/*.toml` when they appear.
+1. **Command** — one line: OS/shell, script path, effective `-i`/`-o`/`--tools`/`--items`/`--clean`.
+   If `--tools` was omitted and `default-tools` is visible, mention the configured default that was used.
+2. **Deletions / clean** — list paths from log lines matching `cleaned` / `removed` / `Clean`.
+   If `--clean` was not used, state that no clean step ran (overwrite in place only).
+3. **Generated / updated** — from lines with `->` (e.g. `cursor agent ->`, `copilot skill ->`) and `== tool ==` headers.
+   Group by tool.
+   Call out `AGENTS.md`, `AGENTS.override.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.junie/AGENTS.md`, `.codex/config.toml`, and `.codex/agents/*.toml` when they appear.
 4. **Basis** — one short sentence explaining what you inferred from the user's request.
 
 ## Edge cases
 
-- **MCP-only sync:** likewise, call `scripts/<tool>/sync-mcp.{sh,ps1} -i <src>/mcp-servers -o <out>` directly. The Bash variants require `jq`.
-- **Rules-only sync:** `sync-all` has no such flag. Call the per-tool script directly (e.g. `scripts/cursor/sync-rules.sh -i <src>/rules -o <out>`).
+- **MCP-only sync:** likewise, call `scripts/<tool>/sync-mcp.{sh,ps1} -i <src>/mcp-servers -o <out>` directly.
+  The Bash variants require `jq`.
+- **Rules-only sync:** `sync-all` has no such flag.
+  Call the per-tool script directly (e.g. `scripts/cursor/sync-rules.sh -i <src>/rules -o <out>`).
 - **Installed cyncia files / monorepo:** always resolve real filesystem paths before running.
 - **Input equals output:** allowed; scripts skip the redundant `AGENTS.md` copy.
 - **Git Bash on Windows:** prefer the `.sh` script with `bash`; only use `.ps1` when the session is clearly native PowerShell.
