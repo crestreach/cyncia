@@ -150,9 +150,10 @@ strip_frontmatter_normalize_headings() {
     function heading_level(line, tmp, n) {
       tmp = line
       sub(/^ {0,3}/, "", tmp)
-      if (tmp !~ /^#{1,6}([ \t]|$)/) return 0
+      if (tmp !~ /^#+([ \t]|$)/) return 0
       n = 0
-      while (substr(tmp, n + 1, 1) == "#" && n < 6) n++
+      while (substr(tmp, n + 1, 1) == "#") n++
+      if (n > 6) return 0
       return n
     }
     function repeat_hashes(n, out) {
