@@ -4,7 +4,7 @@
 
 Website: <https://www.cyncia.net>
 
-Cyncia takes a single, tool-agnostic source tree (guidelines, agents, skills, rules, MCP servers) and generates the per-tool layouts that **Cursor**, **Claude Code**, **GitHub Copilot**, **VS Code**, **JetBrains Junie**, and **Codex** expect — file paths, file formats, and frontmatter keys all translated for you.
+Cyncia (pronounced "SIN-sha", /ˈsɪnʃə/) takes a single, tool-agnostic source tree (guidelines, agents, skills, rules, MCP servers) and generates the per-tool layouts that **Cursor**, **Claude Code**, **GitHub Copilot**, **VS Code**, **JetBrains Junie**, and **Codex** expect — file paths, file formats, and frontmatter keys all translated for you.
 
 > Full reference (formats, frontmatter, MCP secret tokens, per-tool field map,
 > edge cases): **[`cyncia.md`](cyncia.md)**.

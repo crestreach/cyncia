@@ -2,7 +2,7 @@
 
 Website: <https://www.cyncia.net>
 
-Tool-agnostic source of truth for AI coding-assistant configuration — **agents**, **skills**, **rules/guidelines**, a top-level **`AGENTS.md`**, and **MCP servers** — plus sync scripts that generate tool-specific files for **Cursor**, **Claude Code**, **GitHub Copilot**, **VS Code**, **JetBrains Junie**, and **Codex**.
+Cyncia (pronounced "SIN-sha", /ˈsɪnʃə/) is a tool-agnostic source of truth for AI coding-assistant configuration — **agents**, **skills**, **rules/guidelines**, a top-level **`AGENTS.md`**, and **MCP servers** — plus sync scripts that generate tool-specific files for **Cursor**, **Claude Code**, **GitHub Copilot**, **VS Code**, **JetBrains Junie**, and **Codex**.
 
 **Why it exists.** Each of those tools looks in a **different place**, expects a **different file format**, and has its own **frontmatter keys** (and some concepts — like `paths`-gated skills or per-agent MCP allowlists — only exist in a subset).
 Maintaining the same agent / skill / rule across all of them by hand means either copy-paste drift or only supporting one tool.
