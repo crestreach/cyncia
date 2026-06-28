@@ -37,7 +37,7 @@ $handler = {
   $existingTools = Get-FrontmatterField -Path $src -Key 'tools'
   $mcp = Get-FrontmatterField -Path $src -Key 'mcp-servers'
   if ($mcp -and $existingTools) {
-    throw "error: agent '$name' has both 'mcp-servers' and 'tools' frontmatter; merge manually."
+    throw "Agent '$name' has both 'mcp-servers' and 'tools' frontmatter; merge manually."
   }
   $insert = @()
   if ($mcp) {

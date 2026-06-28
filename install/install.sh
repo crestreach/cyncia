@@ -68,13 +68,13 @@ while [[ $# -gt 0 ]]; do
     --bootstrap)     INTERACTIVE_MODE="yes"; shift ;;
     --no-bootstrap)  INTERACTIVE_MODE="no";  shift ;;
     -h|--help)       usage; exit 0 ;;
-    *) echo "error: unknown option: $1" >&2; usage >&2; exit 2 ;;
+    *) echo "Error: unknown option: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
 
 for cmd in curl tar mktemp find awk; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
-    echo "error: required command not found: $cmd" >&2
+    echo "Error: required command not found: $cmd" >&2
     exit 1
   fi
 done
@@ -141,7 +141,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
 if ! curl -fsSL "$TARBALL_URL" | tar -xz -C "$TMP"; then
-  echo "error: failed to download or extract $TARBALL_URL" >&2
+  echo "Error: failed to download or extract $TARBALL_URL" >&2
   exit 1
 fi
 
@@ -149,13 +149,13 @@ fi
 # may not be exactly "<repo>-<ref>" — e.g. tags drop a leading "v").
 SRC="$(find "$TMP" -mindepth 1 -maxdepth 1 -type d | head -n1)"
 if [[ -z "$SRC" ]]; then
-  echo "error: extracted archive is empty" >&2
+  echo "Error: extracted archive is empty" >&2
   exit 1
 fi
 
 for entry in scripts skills examples README.md cyncia.md LICENSE; do
   if [[ ! -e "$SRC/$entry" ]]; then
-    echo "error: $entry missing from snapshot $REPO@$REF" >&2
+    echo "Error: $entry missing from snapshot $REPO@$REF" >&2
     exit 1
   fi
 done

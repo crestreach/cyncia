@@ -31,7 +31,7 @@ copilot_agent() {
   existing_tools="$(extract_field "$src" tools)"
   mcp="$(extract_field "$src" mcp-servers)"
   if [[ -n "$mcp" && -n "$existing_tools" ]]; then
-    echo "error: agent '$name' has both 'mcp-servers' and 'tools' frontmatter; merge manually." >&2
+    echo "Error: agent '$name' has both 'mcp-servers' and 'tools' frontmatter; merge manually." >&2
     exit 1
   fi
   rewrite_skill_frontmatter "$src" "drop=mcp-servers" > "$dst"
