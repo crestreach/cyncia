@@ -61,6 +61,12 @@ if ($Clean) { $cleanArgs['Clean'] = $true }
 
 $toolList = $Tools -split ',' | ForEach-Object { $_.Trim().ToLower() } | Where-Object { $_ }
 
+# Validate every requested tool up front so a typo fails fast instead of
+# producing a half-synced output root before erroring mid-run.
+foreach ($tool in $toolList) {
+  if (-not (Test-Path (Join-Path $PSScriptRoot $tool))) { throw "Unknown tool: $tool" }
+}
+
 foreach ($tool in $toolList) {
   $dir = Join-Path $PSScriptRoot $tool
   if (-not (Test-Path $dir)) { throw "Unknown tool: $tool" }

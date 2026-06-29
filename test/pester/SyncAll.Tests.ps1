@@ -169,6 +169,17 @@ description: Nested headings
     }
   }
 
+  It 'rejects a bad tool before syncing any valid tool (fail-fast)' {
+    $src = & $script:NewTestSourceFromFixture
+    $out = & $script:NewTestOutputDir
+    try {
+      { & $script:SyncAllPs1 -InputRoot $src -OutputRoot $out -Tools 'cursor,nope' } | Should -Throw
+      (Test-Path -LiteralPath (Join-Path $out '.cursor')) | Should -BeFalse
+    } finally {
+      Remove-Item -LiteralPath $src, $out -Recurse -Force -ErrorAction SilentlyContinue
+    }
+  }
+
   It 'input tree without AGENTS.md throws' {
     $src = & $script:NewTestSourceFromFixture
     $out = & $script:NewTestOutputDir

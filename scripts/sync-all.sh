@@ -82,6 +82,16 @@ fi
 
 IFS=',' read -r -a TOOL_LIST <<< "$TOOLS"
 
+# Validate every requested tool up front so a typo fails fast instead of
+# producing a half-synced output root before erroring mid-run.
+for tool in "${TOOL_LIST[@]}"; do
+  tool="$(echo "$tool" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
+  [[ -z "$tool" ]] && continue
+  if [[ ! -d "$SCRIPT_DIR/$tool" ]]; then
+    echo "Unknown tool: $tool" >&2; exit 1
+  fi
+done
+
 # Optional --items and --clean: avoid ${arr[@]} with set -u when array is empty (bash 4.4+).
 run_sync() {
   local s="$1"

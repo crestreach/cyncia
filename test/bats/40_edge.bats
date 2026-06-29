@@ -26,3 +26,10 @@ load test_helper
   [ -d "$TEST_OUT/.cursor/skills/alpha" ]
   [ ! -d "$TEST_OUT/.cursor/skills/beta" ]
 }
+
+@test "sync-all: rejects a bad tool before syncing any valid tool (fail-fast)" {
+  run bash "$SYNC_ALL_SH" -i "$TEST_SRC" -o "$TEST_OUT" --tools cursor,nope
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Unknown tool: nope"* ]]
+  [ ! -d "$TEST_OUT/.cursor" ]
+}
