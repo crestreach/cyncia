@@ -1,4 +1,6 @@
-# cyncia
+# Cyncia
+
+<img src="assets/logo/logo.svg" alt="Cyncia logo" width="200">
 
 **Author your AI-assistant config once, sync it to every tool.**
 

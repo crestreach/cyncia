@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Cyncia mark">
+  <defs>
+    <linearGradient id="cg" x1="0" y1="0" x2="0" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1e78f0"/>
+      <stop offset="1" stop-color="#8629e6"/>
+    </linearGradient>
+  </defs>
+  <!-- C arc: center 256,256 r=192, opening on the right -->
+  <path d="M 366.1 98.7 A 192 192 0 1 0 366.1 413.3" fill="none" stroke="url(#cg)" stroke-width="46" stroke-linecap="round"/>
+  <!-- arrowheads (rounded corners like the original logo) -->
+  <path d="M 344.9 137.3 L 396.4 63.7 L 433.1 144.3 Z" fill="url(#cg)" stroke="url(#cg)" stroke-width="18" stroke-linejoin="round"/>
+  <path d="M 344.9 374.7 L 396.4 448.3 L 433.1 367.7 Z" fill="url(#cg)" stroke="url(#cg)" stroke-width="18" stroke-linejoin="round"/>
+  <!-- circuit prongs -->
+  <path d="M 101 188 L 252 188" fill="none" stroke="url(#cg)" stroke-width="22" stroke-linecap="round"/>
+  <path d="M 87 256 L 332 256" fill="none" stroke="url(#cg)" stroke-width="22" stroke-linecap="round"/>
+  <path d="M 101 324 L 252 324" fill="none" stroke="url(#cg)" stroke-width="22" stroke-linecap="round"/>
+  <!-- node dots -->
+  <circle cx="252" cy="188" r="19" fill="url(#cg)"/>
+  <circle cx="332" cy="256" r="27" fill="url(#cg)"/>
+  <circle cx="252" cy="324" r="19" fill="url(#cg)"/>
+</svg>
